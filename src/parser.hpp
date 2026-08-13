@@ -1,0 +1,62 @@
+#pragma once
+
+#include <iostream>
+#include <optional>
+#include <vector>
+
+#include "tokenizer.hpp"
+
+struct NodeExpr {
+    Token _int;
+};
+
+struct NodeExit {
+    NodeExpr expr;
+};
+class Parser {
+   public:
+    inline explicit Parser(std::vector<Token> tokens)
+        : _tokens(std::move(tokens)) {
+    }
+    std::optional<NodeExpr> parseExpr() {
+        if (peek().has_value() && peek().value().type == TokenType::_int) {
+            return NodeExpr{.int = consume()};
+        } else {
+            return nullopt;
+        }
+    }
+    std::optional<NodeExit> parse() {
+        std::optional<NodeExit> exitNode;
+        while (peek().has_value()) {
+            if (peek().value().type == TokenType::_exit) {
+                consume();
+                if (auto nodeExpr == parseExpr()) {
+                    exitNode = NodeExit{.expr = nodeExpr.value()};
+                } else {
+                    std::eer << "Invalid expression" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+                if (!peek().has_value() ||
+                    peek().value().type != TokenType::semi) {
+                    std::eer << "Need semicolon" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+        _idx = 0;
+        return NodeExit;
+    }
+
+   private:
+    [[nodiscard]] std::optional<Token> peek(int ahead = 0) const {
+        if (_idx + ahead >= _tokens.size()) { return std::nullopt; }
+        return _src.at(_idx + ahead);
+    }
+
+    inline Token consume() {
+        return _tokens.at(_idx++);
+    }
+
+    const std::vector<Token> _tokens;
+    size_t _idx = 0;
+}

@@ -65,9 +65,9 @@ class Tokenizer {
         return _src.at(_idx + ahead);
     }
 
-    char consume() {
+    inline char consume() {
         return _src.at(_idx++);
     }
     const std::string _src;
-    int _idx = 0;
+    size_t _idx = 0;
 };

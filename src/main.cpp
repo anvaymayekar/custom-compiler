@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "parser.hpp"
 #include "tokenizer.hpp"
 
 std::string tokensToASM(const std::vector<Token> &tokens) {

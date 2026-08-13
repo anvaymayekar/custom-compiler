@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-enum class TokenType { nigh, _int, semi, openParen, closeParen };
+enum class TokenType { nigh, ank, semi, openParen, closeParen };
 
 struct Token {
     TokenType type;
@@ -40,7 +40,7 @@ class Tokenizer {
                 while (peek().has_value() && std::isdigit(peek().value())) {
                     buffer.push_back(consume());
                 }
-                tokens.push_back({.type = TokenType::_int, .value = buffer});
+                tokens.push_back({.type = TokenType::ank, .value = buffer});
                 buffer.clear();
                 continue;
             } else if (peek().value() == '(') {

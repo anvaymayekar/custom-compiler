@@ -15,7 +15,7 @@ class Generator {
         output << "global _start\n";
         output << "_start:\n";
         output << "    mov rax, 60\n";
-        output << "    mov rdi, " << _root.expr._int.value.value() << "\n";
+        output << "    mov rdi, " << _root.expr.ank.value.value() << "\n";
         output << "    syscall\n";
         return output.str();
     }

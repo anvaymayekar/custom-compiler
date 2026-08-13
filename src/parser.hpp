@@ -8,7 +8,7 @@
 #include "tokenizer.hpp"
 
 struct NodeExpr {
-    Token _int;
+    Token ank;
 };
 
 struct NodeExit {
@@ -20,8 +20,8 @@ class Parser {
         : _tokens(std::move(tokens)) {
     }
     std::optional<NodeExpr> parseExpr() {
-        if (peek().has_value() && peek().value().type == TokenType::_int) {
-            return NodeExpr{._int = consume()};
+        if (peek().has_value() && peek().value().type == TokenType::ank) {
+            return NodeExpr{.ank = consume()};
         } else {
             return std::nullopt;
         }

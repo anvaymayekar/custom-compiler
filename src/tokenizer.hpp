@@ -51,7 +51,7 @@ class Tokenizer {
                 consume();
                 continue;
             } else {
-                std::cerr << "Unexpected character: " << "\n";
+                std::cerr << "Unexpected character: " << peek().value() << "\n";
                 exit(EXIT_FAILURE);
             }
         }
@@ -60,7 +60,7 @@ class Tokenizer {
     }
 
    private:
-    [[nodiscard]] std::optional<char> peek(int ahead = 0) const {
+    [[nodiscard]] std::optional<char> peek(size_t ahead = 0) const {
         if (_idx + ahead >= _src.length()) { return std::nullopt; }
         return _src.at(_idx + ahead);
     }

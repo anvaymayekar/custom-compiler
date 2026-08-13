@@ -1,6 +1,8 @@
 #pragma once
+#include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "tokenizer.hpp"
@@ -49,7 +51,7 @@ class Parser {
     }
 
    private:
-    [[nodiscard]] std::optional<Token> peek(int ahead = 0) const {
+    [[nodiscard]] std::optional<Token> peek(size_t ahead = 0) const {
         if (_idx + ahead >= _tokens.size()) { return std::nullopt; }
         return _tokens.at(_idx + ahead);
     }

@@ -6,38 +6,38 @@
 #include <string>
 #include <vector>
 
+#include "generator.hpp"
 #include "parser.hpp"
 #include "tokenizer.hpp"
+// std::string tokensToASM(const std::vector<Token> &tokens) {
+//     std::stringstream output;
 
-std::string tokensToASM(const std::vector<Token> &tokens) {
-    std::stringstream output;
+//     output << "global _start\n";
+//     output << "_start:\n";
+//     for (size_t i = 0; i < tokens.size(); i++) {
+//         const Token &token = tokens[i];
 
-    output << "global _start\n";
-    output << "_start:\n";
-    for (size_t i = 0; i < tokens.size(); i++) {
-        const Token &token = tokens[i];
+//         if (token.type == TokenType::_exit) {
+//             if (i + 2 < tokens.size() &&
+//                 tokens[i + 1].type == TokenType::_int &&
+//                 tokens[i + 2].type == TokenType::semi) {
+//                 output << "    mov rax, 60\n";
+//                 output << "    mov rdi, " << tokens[i + 1].value.value()
+//                        << "\n";
+//                 output << "    syscall\n";
 
-        if (token.type == TokenType::_exit) {
-            if (i + 2 < tokens.size() &&
-                tokens[i + 1].type == TokenType::_int &&
-                tokens[i + 2].type == TokenType::semi) {
-                output << "    mov rax, 60\n";
-                output << "    mov rdi, " << tokens[i + 1].value.value()
-                       << "\n";
-                output << "    syscall\n";
+//                 i += 2;
+//             }
 
-                i += 2;
-            }
+//             else {
+//                 std::cerr << "Invalid return statement\n";
+//                 exit(EXIT_FAILURE);
+//             }
+//         }
+//     }
 
-            else {
-                std::cerr << "Invalid return statement\n";
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
-
-    return output.str();
-}
+//     return output.str();
+// }
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -62,6 +62,14 @@ int main(int argc, char *argv[]) {
     }
     Tokenizer tokenizer(std::move(contents));
     std::vector<Token> tokens = tokenizer.tokenize();
+    Parser parser(std::move(tokens));
+    std::optional<NodeExit> tree = parser.parse();
+
+    if (!tree.has_value()) {
+        std::cerr << "No exit statement found" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    Generator generator(tree.value());
     {
         std::ofstream file("./out.asm");
 
@@ -70,7 +78,7 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
 
-        file << tokensToASM(tokens);
+        file << generator.generate();
     }
     system("nasm -f elf64 out.asm");
     system("ld -o out out.o");

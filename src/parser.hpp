@@ -1,5 +1,4 @@
 #pragma once
-
 #include <iostream>
 #include <optional>
 #include <vector>
@@ -20,9 +19,9 @@ class Parser {
     }
     std::optional<NodeExpr> parseExpr() {
         if (peek().has_value() && peek().value().type == TokenType::_int) {
-            return NodeExpr{.int = consume()};
+            return NodeExpr{._int = consume()};
         } else {
-            return nullopt;
+            return std::nullopt;
         }
     }
     std::optional<NodeExit> parse() {
@@ -30,27 +29,29 @@ class Parser {
         while (peek().has_value()) {
             if (peek().value().type == TokenType::_exit) {
                 consume();
-                if (auto nodeExpr == parseExpr()) {
+                if (auto nodeExpr = parseExpr()) {
                     exitNode = NodeExit{.expr = nodeExpr.value()};
                 } else {
-                    std::eer << "Invalid expression" << std::endl;
+                    std::cerr << "Invalid expression" << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                if (!peek().has_value() ||
-                    peek().value().type != TokenType::semi) {
-                    std::eer << "Need semicolon" << std::endl;
+                if (peek().has_value() &&
+                    peek().value().type == TokenType::semi) {
+                    consume();
+                } else {
+                    std::cerr << "Need semicolon" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
         }
         _idx = 0;
-        return NodeExit;
+        return exitNode;
     }
 
    private:
     [[nodiscard]] std::optional<Token> peek(int ahead = 0) const {
         if (_idx + ahead >= _tokens.size()) { return std::nullopt; }
-        return _src.at(_idx + ahead);
+        return _tokens.at(_idx + ahead);
     }
 
     inline Token consume() {
@@ -59,4 +60,4 @@ class Parser {
 
     const std::vector<Token> _tokens;
     size_t _idx = 0;
-}
+};

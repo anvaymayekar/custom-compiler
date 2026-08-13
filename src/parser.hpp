@@ -29,8 +29,9 @@ class Parser {
     std::optional<NodeExit> parse() {
         std::optional<NodeExit> exitNode;
         while (peek().has_value()) {
-            if (peek().value().type == TokenType::nigh) {
-                consume();
+            if (peek().value().type == TokenType::nigh && peek(1).has_value() &&
+                peek(1).value().type == TokenType::openParen) {
+                consume(2);
                 if (auto nodeExpr = parseExpr()) {
                     exitNode = NodeExit{.expr = nodeExpr.value()};
                 } else {
@@ -38,10 +39,17 @@ class Parser {
                     exit(EXIT_FAILURE);
                 }
                 if (peek().has_value() &&
+                    peek().value().type == TokenType::closeParen) {
+                    consume();
+                } else {
+                    std::cerr << "Expected ')'" << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+                if (peek().has_value() &&
                     peek().value().type == TokenType::semi) {
                     consume();
                 } else {
-                    std::cerr << "Need semicolon" << std::endl;
+                    std::cerr << "Expected ';'" << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
@@ -56,8 +64,10 @@ class Parser {
         return _tokens.at(_idx + ahead);
     }
 
-    inline Token consume() {
-        return _tokens.at(_idx++);
+    inline Token consume(size_t count = 1) {
+        Token token = _tokens.at(_idx);
+        _idx += count;
+        return token;
     }
 
     const std::vector<Token> _tokens;

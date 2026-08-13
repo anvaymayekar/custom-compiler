@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-enum class TokenType { nigh, _int, semi };
+enum class TokenType { nigh, _int, semi, openParen, closeParen };
 
 struct Token {
     TokenType type;
@@ -43,6 +43,12 @@ class Tokenizer {
                 tokens.push_back({.type = TokenType::_int, .value = buffer});
                 buffer.clear();
                 continue;
+            } else if (peek().value() == '(') {
+                consume();
+                tokens.push_back({.type = TokenType::openParen});
+            } else if (peek().value() == ')') {
+                consume();
+                tokens.push_back({.type = TokenType::closeParen});
             } else if (peek().value() == ';') {
                 tokens.push_back({.type = TokenType::semi});
                 consume();

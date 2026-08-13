@@ -41,7 +41,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        std::cerr << "Incorrect Usage. Use: compiler <file.cx>\n";
+        std::cerr << "Incorrect Usage. Use: compiler <file.mr>\n";
         return EXIT_FAILURE;
     }
 

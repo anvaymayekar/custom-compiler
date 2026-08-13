@@ -29,7 +29,7 @@ class Parser {
     std::optional<NodeExit> parse() {
         std::optional<NodeExit> exitNode;
         while (peek().has_value()) {
-            if (peek().value().type == TokenType::_exit) {
+            if (peek().value().type == TokenType::nigh) {
                 consume();
                 if (auto nodeExpr = parseExpr()) {
                     exitNode = NodeExit{.expr = nodeExpr.value()};

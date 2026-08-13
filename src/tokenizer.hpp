@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-enum class TokenType { _exit, _int, semi };
+enum class TokenType { nigh, _int, semi };
 
 struct Token {
     TokenType type;
@@ -27,8 +27,8 @@ class Tokenizer {
                 while (peek().has_value() && std::isalpha(peek().value())) {
                     buffer.push_back(consume());
                 }
-                if (buffer == "exit") {
-                    tokens.push_back({.type = TokenType::_exit});
+                if (buffer == "nigh") {
+                    tokens.push_back({.type = TokenType::nigh});
                     buffer.clear();
                     continue;
                 } else {

@@ -26,7 +26,7 @@ class Parser {
             return std::nullopt;
         }
     }
-    std::optional<NodeExit> parse() {
+    std::optional<NodeExit> parseExit() {
         std::optional<NodeExit> exitNode;
         while (peek().has_value()) {
             if (peek().value().type == TokenType::nigh && peek(1).has_value() &&

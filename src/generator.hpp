@@ -27,8 +27,8 @@ class Generator {
     void genStmt(const NodeStmt &stmt) {
         struct StmtVisitor {
             Generator *_gen;
-            void operator()(const NodeStmtNigh &stmtNigh) const {
-                _gen->genExpr(stmtNigh.expr);
+            void operator()(const NodeStmtShevat &stmtShevat) const {
+                _gen->genExpr(stmtShevat.expr);
                 _gen->_output << "    mov rax, 60\n";
                 _gen->_output << "    pop rdi,\n";
                 _gen->_output << "    syscall\n";

@@ -19,7 +19,7 @@ struct NodeExpr {
     std::variant<NodeExprAnk, NodeExprId> var;
 };
 
-struct NodeStmtNigh {
+struct NodeStmtShevat {
     NodeExpr expr;
 };
 
@@ -29,7 +29,7 @@ struct NodeStmtAnk {
 };
 
 struct NodeStmt {
-    std::variant<NodeStmtNigh, NodeStmtAnk> var;
+    std::variant<NodeStmtShevat, NodeStmtAnk> var;
 };
 struct NodeProg {
     std::vector<NodeStmt> stmts;
@@ -55,12 +55,12 @@ class Parser {
     }
 
     std::optional<NodeStmt> parseStmt() {
-        if (peek().value().type == TokenType::nigh && peek(1).has_value() &&
+        if (peek().value().type == TokenType::shevat && peek(1).has_value() &&
             peek(1).value().type == TokenType::openParen) {
             consume(2);
-            NodeStmtNigh stmtNigh;
+            NodeStmtShevat stmtShevat;
             if (auto nodeExpr = parseExpr()) {
-                stmtNigh = {.expr = nodeExpr.value()};
+                stmtShevat = {.expr = nodeExpr.value()};
             } else {
                 std::cerr << "Invalid expression" << std::endl;
                 exit(EXIT_FAILURE);
@@ -78,7 +78,7 @@ class Parser {
                 std::cerr << "Expected ';'" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            return NodeStmt{.var = stmtNigh};
+            return NodeStmt{.var = stmtShevat};
         } else if (peek().has_value() &&
                    peek().value().type == TokenType::_ank &&
                    peek(1).has_value() &&
@@ -108,7 +108,8 @@ class Parser {
     std::optional<NodeExit> parseExit() {
         std::optional<NodeExit> exitNode;
         while (peek().has_value()) {
-            if (peek().value().type == TokenType::nigh && peek(1).has_value() &&
+            if (peek().value().type == TokenType::shevat &&
+                peek(1).has_value() &&
                 peek(1).value().type == TokenType::openParen) {
                 consume(2);
                 if (auto nodeExpr = parseExpr()) {

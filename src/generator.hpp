@@ -7,19 +7,49 @@
 
 class Generator {
    public:
-    inline Generator(NodeExit root) : _root(std::move(root)) {
+    inline explicit Generator(NodeProg prog) : _prog(std::move(prog)) {
     }
-    [[nodiscard]] std::string generate() const {
-        std::stringstream output;
+    void genExpr(const NodeExpr &expr) {
+        struct ExprVisitor {
+            Generator *_gen;
+            void operator()(const NodeExprAnk &exprAnk) {
+                _gen->_output << "    mov rax," << exprAnk.ank.value.value()
+                              << "\n";
+                _gen->_output << "    push rax\n";
+            }
+            void operator()(const NodeExprId &exprId) {
+            }
+        };
+        ExprVisitor visitor{._gen = this};
+        std::visit(visitor, expr.var);
+    }
 
-        output << "global _start\n";
-        output << "_start:\n";
-        output << "    mov rax, 60\n";
-        output << "    mov rdi, " << _root.expr.ank.value.value() << "\n";
-        output << "    syscall\n";
-        return output.str();
+    void genStmt(const NodeStmt &stmt) {
+        struct StmtVisitor {
+            Generator *_gen;
+            void operator()(const NodeStmtNigh &stmtNigh) const {
+                _gen->genExpr(stmtNigh.expr);
+                _gen->_output << "    mov rax, 60\n";
+                _gen->_output << "    pop rdi,\n";
+                _gen->_output << "    syscall\n";
+            }
+            void operator()(const NodeStmtAnk &stmtAnk) {
+            }
+        };
+        StmtVisitor visitor{._gen = this};
+        std::visit(visitor, stmt.var);
+    }
+    [[nodiscard]] std::string generate() {
+        _output << "global _start\n";
+        _output << "_start:\n";
+        for (const NodeStmt &stmt : _prog.stmts) { genStmt(stmt); }
+        _output << "    mov rax, 60\n";
+        _output << "    mov rdi, 0\n";
+        _output << "    syscall\n";
+        return _output.str();
     }
 
    private:
-    const NodeExit _root;
+    const NodeProg _prog;
+    std::stringstream _output;
 };

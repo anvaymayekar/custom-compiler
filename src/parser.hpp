@@ -3,12 +3,36 @@
 #include <iostream>
 #include <optional>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "tokenizer.hpp"
 
-struct NodeExpr {
+struct NodeExprAnk {
     Token ank;
+};
+struct NodeExprId {
+    Token id;
+};
+
+struct NodeExpr {
+    std::variant<NodeExprAnk, NodeExprId> var;
+};
+
+struct NodeStmtNigh {
+    NodeExpr expr;
+};
+
+struct NodeStmtAnk {
+    Token id;
+    NodeExpr expr;
+};
+
+struct NodeStmt {
+    std::variant<NodeStmtNigh, NodeStmtAnk> var;
+};
+struct NodeProg {
+    std::vector<NodeStmt> stmts;
 };
 
 struct NodeExit {
@@ -21,7 +45,62 @@ class Parser {
     }
     std::optional<NodeExpr> parseExpr() {
         if (peek().has_value() && peek().value().type == TokenType::ank) {
-            return NodeExpr{.ank = consume()};
+            return NodeExpr{.var = NodeExprAnk{.ank = consume()}};
+        } else if (peek().has_value() && peek().value().type == TokenType::id) {
+            return NodeExpr{.var = NodeExprId{.id = consume()}};
+
+        } else {
+            return std::nullopt;
+        }
+    }
+
+    std::optional<NodeStmt> parseStmt() {
+        if (peek().value().type == TokenType::nigh && peek(1).has_value() &&
+            peek(1).value().type == TokenType::openParen) {
+            consume(2);
+            NodeStmtNigh stmtNigh;
+            if (auto nodeExpr = parseExpr()) {
+                stmtNigh = {.expr = nodeExpr.value()};
+            } else {
+                std::cerr << "Invalid expression" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            if (peek().has_value() &&
+                peek().value().type == TokenType::closeParen) {
+                consume();
+            } else {
+                std::cerr << "Expected ')'" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            if (peek().has_value() && peek().value().type == TokenType::semi) {
+                consume();
+            } else {
+                std::cerr << "Expected ';'" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            return NodeStmt{.var = stmtNigh};
+        } else if (peek().has_value() &&
+                   peek().value().type == TokenType::_ank &&
+                   peek(1).has_value() &&
+                   peek(1).value().type == TokenType::id &&
+                   peek(2).has_value() &&
+                   peek(2).value().type == TokenType::eq) {
+            consume();
+            auto stmtAnk = NodeStmtAnk{.id = consume()};
+            consume();
+            if (auto expr = parseExpr()) {
+                stmtAnk.expr = expr.value();
+            } else {
+                std::cerr << "Invalid expression" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            if (peek().has_value() && peek().value().type == TokenType::semi) {
+                consume();
+            } else {
+                std::cerr << "Expected ';'" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            return NodeStmt{.var = stmtAnk};
         } else {
             return std::nullopt;
         }
@@ -56,6 +135,19 @@ class Parser {
         }
         _idx = 0;
         return exitNode;
+    }
+
+    std::optional<NodeProg> parseProg() {
+        NodeProg prog;
+        while (peek().has_value()) {
+            if (auto stmt = parseStmt()) {
+                prog.stmts.push_back(stmt.value());
+            } else {
+                std::cerr << "Invalid Statement" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+        return prog;
     }
 
    private:

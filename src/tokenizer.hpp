@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-enum class TokenType { nigh, ank, semi, openParen, closeParen };
+enum class TokenType { nigh, ank, semi, openParen, closeParen, id, _ank, eq };
 
 struct Token {
     TokenType type;
@@ -31,9 +31,14 @@ class Tokenizer {
                     tokens.push_back({.type = TokenType::nigh});
                     buffer.clear();
                     continue;
+                } else if (buffer == "ank") {
+                    tokens.push_back({.type = TokenType::_ank});
+                    buffer.clear();
+                    continue;
                 } else {
-                    std::cerr << "Unknown identifier: " << buffer << "\n";
-                    exit(EXIT_FAILURE);
+                    tokens.push_back({.type = TokenType::id, .value = buffer});
+                    buffer.clear();
+                    continue;
                 }
             } else if (std::isdigit(peek().value())) {
                 buffer.push_back(consume());
@@ -52,6 +57,10 @@ class Tokenizer {
             } else if (peek().value() == ';') {
                 tokens.push_back({.type = TokenType::semi});
                 consume();
+                continue;
+            } else if (peek().value() == '=') {
+                consume();
+                tokens.push_back({.type = TokenType::eq});
                 continue;
             } else if (std::isspace(peek().value())) {
                 consume();

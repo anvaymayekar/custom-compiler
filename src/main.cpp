@@ -63,13 +63,13 @@ int main(int argc, char *argv[]) {
     Tokenizer tokenizer(std::move(contents));
     std::vector<Token> tokens = tokenizer.tokenize();
     Parser parser(std::move(tokens));
-    std::optional<NodeExit> tree = parser.parseExit();
+    std::optional<NodeProg> prog = parser.parseProg();
 
-    if (!tree.has_value()) {
-        std::cerr << "No exit statement found" << std::endl;
+    if (!prog.has_value()) {
+        std::cerr << "Invalid Program" << std::endl;
         exit(EXIT_FAILURE);
     }
-    Generator generator(tree.value());
+    Generator generator(prog.value());
     {
         std::ofstream file("./out.asm");
 

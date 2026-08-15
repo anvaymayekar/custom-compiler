@@ -1,0 +1,46 @@
+{
+    "name": "marathi-mr",
+    "displayName": "Marathi",
+    "description": "Marathi for Computers: Syntax Highlighting",
+    "version": "1.0.0",
+    "publisher": "anvaymayekar",
+    "icon": "./assets/icon.png",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/anvaymayekar/custom-compiler"
+    },
+    "contributes": {
+        "languages": [
+            {
+                "id": "mr",
+                "aliases": [
+                    "Marathi",
+                    "marathi",
+                    "MR",
+                    "mr"
+                ],
+                "extensions": [
+                    ".mr"
+                ],
+                "configuration": "./language-config.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "mr",
+                "scopeName": "source.mr",
+                "path": "./syntax/mr.tmLanguage.json"
+            }
+        ],
+        "iconThemes": [
+            {
+                "id": "marathi-icons",
+                "label": "Marathi Icons",
+                "path": "./assets/marathi-icon.json"
+            }
+        ]
+    }
+}

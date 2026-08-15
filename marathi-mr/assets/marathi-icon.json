@@ -1,0 +1,11 @@
+{
+    "iconDefinitions": {
+        "_mr": {
+            "iconPath": "./icon.json"
+        }
+    },
+
+    "fileExtensions": {
+        "mr": "_mr"
+    }
+}

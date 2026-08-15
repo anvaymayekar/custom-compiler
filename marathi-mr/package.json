@@ -35,11 +35,10 @@
                 "path": "./syntax/mr.tmLanguage.json"
             }
         ],
-        "iconThemes": [
+        "snippets": [
             {
-                "id": "marathi-icons",
-                "label": "Marathi Icons",
-                "path": "./assets/marathi-icon.json"
+                "language": "mr",
+                "path": "./snippets/mr.json"
             }
         ]
     }

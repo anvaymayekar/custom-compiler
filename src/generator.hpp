@@ -27,7 +27,7 @@ class Generator {
                 const auto &var = _gen->_vars.at(temp);
                 std::stringstream offset;
                 offset << "QWORD [rsp + "
-                       << (_gen->_stackSize - var.stackLoc) * 4 << "]\n";
+                       << (_gen->_stackSize - var.stackLoc - 1) * 4 << "]\n";
                 _gen->push(offset.str());
             }
         };

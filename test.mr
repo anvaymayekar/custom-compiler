@@ -1,4 +1,4 @@
 ank x = 1;
 ank y = 3;
 
-shevat(y);
+shevat(x);

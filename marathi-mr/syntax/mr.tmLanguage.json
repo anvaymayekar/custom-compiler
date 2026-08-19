@@ -81,12 +81,12 @@
 
                 {
                     "name": "keyword.control.flow.mr",
-                    "match": "\\b(thamb|shevat)\\b"
+                    "match": "\\b(thamb|parat)\\b"
                 },
 
                 {
                     "name": "keyword.operator.logical.mr",
-                    "match": "\\b(ani|kiva)\\b"
+                    "match": "\\b(ani|ki)\\b"
                 },
 
                 {
@@ -124,7 +124,7 @@
             "patterns": [
                 {
                     "name": "support.function.mr",
-                    "match": "\\bbol\\b"
+                    "match": "\\b(bol|shevti)\\b"
                 },
 
                 {

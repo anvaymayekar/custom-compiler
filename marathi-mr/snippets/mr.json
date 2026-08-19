@@ -66,8 +66,8 @@
     },
 
     "शेवट -> Exit program": {
-        "prefix": "shevat",
-        "body": ["shevat(${1:value});"],
+        "prefix": "shevti",
+        "body": ["shevti(${1:value});"],
         "description": "कार्यक्रमाची अंमलबजावणी समाप्त करा -> Terminate program execution"
     }
 }

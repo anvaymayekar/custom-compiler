@@ -1,4 +1,4 @@
-ank a = 5;
-ank b = 6;
+ank a = 90;
+ank b = 70;
 
-shevat(a);
+shevti(b);

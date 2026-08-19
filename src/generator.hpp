@@ -13,16 +13,17 @@ class Generator {
    public:
     inline explicit Generator(NodeProg prog) : _prog(std::move(prog)) {
     }
-    void genExpr(const NodeExpr *expr) {
-        struct ExprVisitor {
+
+    void genTerm(const NodeTerm *term) {
+        struct TermVisitor {
             Generator *_gen;
-            void operator()(const NodeExprAnk *exprAnk) {
-                _gen->_output << "    mov rax," << exprAnk->ank.value.value()
-                              << "\n";
+            void operator()(const NodeTermAnk *nodeTermAnk) const {
+                _gen->_output << "    mov rax,"
+                              << nodeTermAnk->ank.value.value() << "\n";
                 _gen->push("rax");
             }
-            void operator()(const NodeExprId *exprId) {
-                auto temp = exprId->id.value.value();
+            void operator()(const NodeTermId *nodeTermId) const {
+                auto temp = nodeTermId->id.value.value();
                 if (!_gen->_vars.contains(temp)) {
                     std::cerr << "Undeclared identifier: " << temp << std::endl;
                     exit(EXIT_FAILURE);
@@ -32,6 +33,16 @@ class Generator {
                 offset << "QWORD [rsp + "
                        << (_gen->_stackSize - var.stackLoc - 1) * 8 << "]\n";
                 _gen->push(offset.str());
+            }
+        };
+        TermVisitor visitor({._gen = this});
+        std::visit(visitor, term->var);
+    }
+    void genExpr(const NodeExpr *expr) {
+        struct ExprVisitor {
+            Generator *_gen;
+            void operator()(const NodeTerm *term) {
+                _gen->genTerm(term);
             }
             void operator()(const NodeBinExpr *binExpr) const {
                 assert(false);  // not implemented
@@ -44,8 +55,8 @@ class Generator {
     void genStmt(const NodeStmt &stmt) {
         struct StmtVisitor {
             Generator *_gen;
-            void operator()(const NodeStmtShevat *stmtShevat) const {
-                _gen->genExpr(stmtShevat->expr);
+            void operator()(const NodeStmtShevti *stmtShevti) const {
+                _gen->genExpr(stmtShevti->expr);
                 _gen->_output << "    mov rax, 60\n";
                 _gen->pop("rdi");
                 _gen->_output << "    syscall\n";

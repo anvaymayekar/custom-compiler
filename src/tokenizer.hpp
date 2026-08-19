@@ -7,7 +7,17 @@
 #include <utility>
 #include <vector>
 
-enum class TokenType { shevat, ank, semi, openParen, closeParen, id, _ank, eq };
+enum class TokenType {
+    shevti,
+    ank,
+    semi,
+    openParen,
+    closeParen,
+    id,
+    _ank,
+    eq,
+    plus
+};
 
 struct Token {
     TokenType type;
@@ -27,8 +37,8 @@ class Tokenizer {
                 while (peek().has_value() && std::isalpha(peek().value())) {
                     buffer.push_back(consume());
                 }
-                if (buffer == "shevat") {
-                    tokens.push_back({.type = TokenType::shevat});
+                if (buffer == "shevti") {
+                    tokens.push_back({.type = TokenType::shevti});
                     buffer.clear();
                     continue;
                 } else if (buffer == "ank") {
@@ -61,6 +71,10 @@ class Tokenizer {
             } else if (peek().value() == '=') {
                 consume();
                 tokens.push_back({.type = TokenType::eq});
+                continue;
+            } else if (peek().value() == '+') {
+                consume();
+                tokens.push_back({.type = TokenType::plus});
                 continue;
             } else if (std::isspace(peek().value())) {
                 consume();

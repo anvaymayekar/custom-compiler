@@ -9,35 +9,6 @@
 #include "generator.hpp"
 #include "parser.hpp"
 #include "tokenizer.hpp"
-// std::string tokensToASM(const std::vector<Token> &tokens) {
-//     std::stringstream output;
-
-//     output << "global _start\n";
-//     output << "_start:\n";
-//     for (size_t i = 0; i < tokens.size(); i++) {
-//         const Token &token = tokens[i];
-
-//         if (token.type == TokenType::_exit) {
-//             if (i + 2 < tokens.size() &&
-//                 tokens[i + 1].type == TokenType::_int &&
-//                 tokens[i + 2].type == TokenType::semi) {
-//                 output << "    mov rax, 60\n";
-//                 output << "    mov rdi, " << tokens[i + 1].value.value()
-//                        << "\n";
-//                 output << "    syscall\n";
-
-//                 i += 2;
-//             }
-
-//             else {
-//                 std::cerr << "Invalid return statement\n";
-//                 exit(EXIT_FAILURE);
-//             }
-//         }
-//     }
-
-//     return output.str();
-// }
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {

@@ -20,14 +20,14 @@ struct NodeBinExprAdd {
     NodeExpr *rhs;
 };
 
-struct NodeBinExprMul {
-    NodeExpr *lhs;
-    NodeExpr *rhs;
-};
+// struct NodeBinExprMul {
+//     NodeExpr *lhs;
+//     NodeExpr *rhs;
+// };
 
 // Binary expression node
 struct NodeBinExpr {
-    std::variant<NodeBinExprAdd *, NodeBinExprMul *> var;
+    NodeBinExprAdd *add;
 };
 
 // Basic expression nodes
@@ -105,7 +105,7 @@ class Parser {
                     consume();
                     if (auto rhs = parseExpr()) {
                         binExprAdd->rhs = rhs.value();
-                        binExpr->var = binExprAdd;
+                        binExpr->add = binExprAdd;
                         auto expr = _allocator.alloc<NodeExpr>();
                         expr->var = binExpr;
                         return expr;

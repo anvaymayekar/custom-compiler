@@ -1,4 +1,4 @@
 ank a = 90;
-ank b = 70;
+ank b = 40 + 70;
 
-shevti(b);
+shevti(a + b);

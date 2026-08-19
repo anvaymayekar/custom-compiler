@@ -45,7 +45,12 @@ class Generator {
                 _gen->genTerm(term);
             }
             void operator()(const NodeBinExpr *binExpr) const {
-                assert(false);  // not implemented
+                _gen->genExpr(binExpr->add->lhs);
+                _gen->genExpr(binExpr->add->rhs);
+                _gen->pop("rax");
+                _gen->pop("rbx");
+                _gen->_output << "    add rax, rbx\n";
+                _gen->push("rax");
             }
         };
         ExprVisitor visitor{._gen = this};

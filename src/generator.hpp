@@ -1,4 +1,7 @@
 #pragma once
+#include <cassert>
+#include <cstdlib>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -10,16 +13,16 @@ class Generator {
    public:
     inline explicit Generator(NodeProg prog) : _prog(std::move(prog)) {
     }
-    void genExpr(const NodeExpr &expr) {
+    void genExpr(const NodeExpr *expr) {
         struct ExprVisitor {
             Generator *_gen;
-            void operator()(const NodeExprAnk &exprAnk) {
-                _gen->_output << "    mov rax," << exprAnk.ank.value.value()
+            void operator()(const NodeExprAnk *exprAnk) {
+                _gen->_output << "    mov rax," << exprAnk->ank.value.value()
                               << "\n";
                 _gen->push("rax");
             }
-            void operator()(const NodeExprId &exprId) {
-                auto temp = exprId.id.value.value();
+            void operator()(const NodeExprId *exprId) {
+                auto temp = exprId->id.value.value();
                 if (!_gen->_vars.contains(temp)) {
                     std::cerr << "Undeclared identifier: " << temp << std::endl;
                     exit(EXIT_FAILURE);
@@ -30,30 +33,33 @@ class Generator {
                        << (_gen->_stackSize - var.stackLoc - 1) * 8 << "]\n";
                 _gen->push(offset.str());
             }
+            void operator()(const NodeBinExpr *binExpr) const {
+                assert(false);  // not implemented
+            }
         };
         ExprVisitor visitor{._gen = this};
-        std::visit(visitor, expr.var);
+        std::visit(visitor, expr->var);
     }
 
     void genStmt(const NodeStmt &stmt) {
         struct StmtVisitor {
             Generator *_gen;
-            void operator()(const NodeStmtShevat &stmtShevat) const {
-                _gen->genExpr(stmtShevat.expr);
+            void operator()(const NodeStmtShevat *stmtShevat) const {
+                _gen->genExpr(stmtShevat->expr);
                 _gen->_output << "    mov rax, 60\n";
                 _gen->pop("rdi");
                 _gen->_output << "    syscall\n";
             }
-            void operator()(const NodeStmtAnk &stmtAnk) {
-                auto temp = stmtAnk.id.value.value();
+            void operator()(const NodeStmtAnk *stmtAnk) {
+                auto temp = stmtAnk->id.value.value();
                 if (_gen->_vars.contains(temp)) {
                     std::cerr << "Identifier already declared: " << temp
                               << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                _gen->_vars.insert({stmtAnk.id.value.value(),
+                _gen->_vars.insert({stmtAnk->id.value.value(),
                                     Var{.stackLoc = _gen->_stackSize}});
-                _gen->genExpr(stmtAnk.expr);
+                _gen->genExpr(stmtAnk->expr);
             }
         };
         StmtVisitor visitor{._gen = this};

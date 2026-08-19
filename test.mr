@@ -1,3 +1,4 @@
-ank x = 1;
-ank y = 3;
-shevat(x);
+ank a = 5;
+ank b = 6;
+
+shevat(a);

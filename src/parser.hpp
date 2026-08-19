@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstdlib>
 #include <iostream>
 #include <optional>
@@ -6,48 +7,85 @@
 #include <variant>
 #include <vector>
 
+#include "arena.hpp"
 #include "tokenizer.hpp"
 
+// Forward declarations
+struct NodeExpr;
+struct NodeBinExpr;
+
+// Binary expressions
+struct BinExprAdd {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+
+struct BinExprMul {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+
+// Binary expression node
+struct NodeBinExpr {
+    std::variant<BinExprAdd *, BinExprMul *> var;
+};
+
+// Basic expression nodes
 struct NodeExprAnk {
     Token ank;
 };
+
 struct NodeExprId {
     Token id;
 };
 
+// Expression node
 struct NodeExpr {
-    std::variant<NodeExprAnk, NodeExprId> var;
+    std::variant<NodeExprAnk *, NodeExprId *, NodeBinExpr *> var;
 };
 
+// Statement nodes
 struct NodeStmtShevat {
-    NodeExpr expr;
+    NodeExpr *expr;
 };
 
 struct NodeStmtAnk {
     Token id;
-    NodeExpr expr;
+    NodeExpr *expr;
 };
 
+// Statement
 struct NodeStmt {
-    std::variant<NodeStmtShevat, NodeStmtAnk> var;
+    std::variant<NodeStmtShevat *, NodeStmtAnk *> var;
 };
+
+// Program
 struct NodeProg {
     std::vector<NodeStmt> stmts;
 };
 
+// Exit node
 struct NodeExit {
-    NodeExpr expr;
+    NodeExpr *expr;
 };
 class Parser {
    public:
     inline explicit Parser(std::vector<Token> tokens)
-        : _tokens(std::move(tokens)) {
+        : _tokens(std::move(tokens)), _allocator(1024 * 1024 * 4) {
     }
-    std::optional<NodeExpr> parseExpr() {
+    std::optional<NodeExpr *> parseExpr() {
         if (peek().has_value() && peek().value().type == TokenType::ank) {
-            return NodeExpr{.var = NodeExprAnk{.ank = consume()}};
+            auto nodeExprAnk = _allocator.alloc<NodeExprAnk>();
+            nodeExprAnk->ank = consume();
+            auto expr = _allocator.alloc<NodeExpr>();
+            expr->var = nodeExprAnk;
+            return expr;
         } else if (peek().has_value() && peek().value().type == TokenType::id) {
-            return NodeExpr{.var = NodeExprId{.id = consume()}};
+            auto nodeExprId = _allocator.alloc<NodeExprId>();
+            nodeExprId->id = consume();
+            auto expr = _allocator.alloc<NodeExpr>();
+            expr->var = nodeExprId;
+            return expr;
 
         } else {
             return std::nullopt;
@@ -58,9 +96,9 @@ class Parser {
         if (peek().value().type == TokenType::shevat && peek(1).has_value() &&
             peek(1).value().type == TokenType::openParen) {
             consume(2);
-            NodeStmtShevat stmtShevat;
+            auto stmtShevat = _allocator.alloc<NodeStmtShevat>();
             if (auto nodeExpr = parseExpr()) {
-                stmtShevat = {.expr = nodeExpr.value()};
+                stmtShevat->expr = nodeExpr.value();
             } else {
                 std::cerr << "Invalid expression" << std::endl;
                 exit(EXIT_FAILURE);
@@ -86,10 +124,11 @@ class Parser {
                    peek(2).has_value() &&
                    peek(2).value().type == TokenType::eq) {
             consume();
-            auto stmtAnk = NodeStmtAnk{.id = consume()};
+            auto stmtAnk = _allocator.alloc<NodeStmtAnk>();
+            stmtAnk->id = consume();
             consume();
             if (auto expr = parseExpr()) {
-                stmtAnk.expr = expr.value();
+                stmtAnk->expr = expr.value();
             } else {
                 std::cerr << "Invalid expression" << std::endl;
                 exit(EXIT_FAILURE);
@@ -165,4 +204,5 @@ class Parser {
 
     const std::vector<Token> _tokens;
     size_t _idx = 0;
+    ArenaAllocator _allocator;
 };

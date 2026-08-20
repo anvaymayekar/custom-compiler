@@ -77,15 +77,15 @@ class Parser {
         : _tokens(std::move(tokens)), _allocator(1024 * 1024 * 4) {
     }
     std::optional<NodeTerm *> parseTerm() {
-        if (peek().has_value() && peek().value().type == TokenType::ank) {
+        if (auto termAnk = tryConsume(TokenType::ank)) {
             auto nodeTermAnk = _allocator.alloc<NodeTermAnk>();
-            nodeTermAnk->ank = consume();
+            nodeTermAnk->ank = termAnk.value();
             auto term = _allocator.alloc<NodeTerm>();
             term->var = nodeTermAnk;
             return term;
-        } else if (peek().has_value() && peek().value().type == TokenType::id) {
+        } else if (auto termId = tryConsume(TokenType::id)) {
             auto nodeTermId = _allocator.alloc<NodeTermId>();
-            nodeTermId->id = consume();
+            nodeTermId->id = termId.value();
             auto term = _allocator.alloc<NodeTerm>();
             term->var = nodeTermId;
             return term;
@@ -94,27 +94,30 @@ class Parser {
     }
     std::optional<NodeExpr *> parseExpr() {
         if (auto term = parseTerm()) {
-            if (peek().has_value() && peek().value().type == TokenType::plus) {
+            if (tryConsume(TokenType::plus).has_value()) {
                 auto binExpr = _allocator.alloc<NodeBinExpr>();
-                if (peek().has_value() &&
-                    peek().value().type == TokenType::plus) {
-                    auto binExprAdd = _allocator.alloc<NodeBinExprAdd>();
-                    auto lhsExpr = _allocator.alloc<NodeExpr>();
-                    lhsExpr->var = term.value();
-                    binExprAdd->lhs = lhsExpr;
-                    consume();
-                    if (auto rhs = parseExpr()) {
-                        binExprAdd->rhs = rhs.value();
-                        binExpr->add = binExprAdd;
-                        auto expr = _allocator.alloc<NodeExpr>();
-                        expr->var = binExpr;
-                        return expr;
-                    } else {
-                        std::cerr << "Expected an expression" << std::endl;
-                        exit(EXIT_FAILURE);
-                    }
+                auto binExprAdd = _allocator.alloc<NodeBinExprAdd>();
+
+                auto lhsExpr = _allocator.alloc<NodeExpr>();
+                lhsExpr->var = term.value();
+
+                binExprAdd->lhs = lhsExpr;
+
+                if (auto rhs = parseExpr()) {
+                    binExprAdd->rhs = rhs.value();
+                    binExpr->add = binExprAdd;
+
+                    auto expr = _allocator.alloc<NodeExpr>();
+                    expr->var = binExpr;
+
+                    return expr;
+                } else {
+                    std::cerr << "Expected an expression after '+'"
+                              << std::endl;
+                    exit(EXIT_FAILURE);
                 }
             }
+
             auto expr = _allocator.alloc<NodeExpr>();
             expr->var = term.value();
 
@@ -136,19 +139,9 @@ class Parser {
                 std::cerr << "Invalid expression" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            if (peek().has_value() &&
-                peek().value().type == TokenType::closeParen) {
-                consume();
-            } else {
-                std::cerr << "Expected ')'" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            if (peek().has_value() && peek().value().type == TokenType::semi) {
-                consume();
-            } else {
-                std::cerr << "Expected ';'" << std::endl;
-                exit(EXIT_FAILURE);
-            }
+            tryConsume(TokenType::closeParen, "Expected ')'");
+            tryConsume(TokenType::semi, "Expected ';'");
+
             return NodeStmt{.var = stmtShevti};
         } else if (peek().has_value() &&
                    peek().value().type == TokenType::_ank &&
@@ -166,12 +159,7 @@ class Parser {
                 std::cerr << "Invalid expression" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            if (peek().has_value() && peek().value().type == TokenType::semi) {
-                consume();
-            } else {
-                std::cerr << "Expected ';'" << std::endl;
-                exit(EXIT_FAILURE);
-            }
+            tryConsume(TokenType::semi, "Expected ';'");
             return NodeStmt{.var = stmtAnk};
         } else {
             return std::nullopt;
@@ -234,7 +222,21 @@ class Parser {
         _idx += count;
         return token;
     }
-
+    inline Token tryConsume(TokenType type, const std::string errMsg) {
+        if (peek().has_value() && peek().value().type == type) {
+            return consume();
+        } else {
+            std::cerr << errMsg << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+    inline std::optional<Token> tryConsume(TokenType type) {
+        if (peek().has_value() && peek().value().type == type) {
+            return consume();
+        } else {
+            return std::nullopt;
+        }
+    }
     const std::vector<Token> _tokens;
     size_t _idx = 0;
     ArenaAllocator _allocator;

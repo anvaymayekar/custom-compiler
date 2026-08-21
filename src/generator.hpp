@@ -38,6 +38,29 @@ class Generator {
         TermVisitor visitor({._gen = this});
         std::visit(visitor, term->var);
     }
+    void genBinExpr(const NodeBinExpr *binExpr) {
+        struct BinExprVisitor {
+            Generator *_gen;
+            void operator()(const NodeBinExprAdd *add) const {
+                _gen->genExpr(add->lhs);
+                _gen->genExpr(add->rhs);
+                _gen->pop("rax");
+                _gen->pop("rbx");
+                _gen->_output << "    add rax, rbx\n";
+                _gen->push("rax");
+            }
+            void operator()(const NodeBinExprMul *mul) const {
+                _gen->genExpr(mul->lhs);
+                _gen->genExpr(mul->rhs);
+                _gen->pop("rax");
+                _gen->pop("rbx");
+                _gen->_output << "    mul rbx\n";
+                _gen->push("rax");
+            }
+        };
+        BinExprVisitor visitor{._gen = this};
+        std::visit(visitor, binExpr->var);
+    }
     void genExpr(const NodeExpr *expr) {
         struct ExprVisitor {
             Generator *_gen;
@@ -45,12 +68,7 @@ class Generator {
                 _gen->genTerm(term);
             }
             void operator()(const NodeBinExpr *binExpr) const {
-                _gen->genExpr(binExpr->add->lhs);
-                _gen->genExpr(binExpr->add->rhs);
-                _gen->pop("rax");
-                _gen->pop("rbx");
-                _gen->_output << "    add rax, rbx\n";
-                _gen->push("rax");
+                _gen->genBinExpr(binExpr);
             }
         };
         ExprVisitor visitor{._gen = this};

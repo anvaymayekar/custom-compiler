@@ -20,14 +20,14 @@ struct NodeBinExprAdd {
     NodeExpr *rhs;
 };
 
-// struct NodeBinExprMul {
-//     NodeExpr *lhs;
-//     NodeExpr *rhs;
-// };
+struct NodeBinExprMul {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
 
 // Binary expression node
 struct NodeBinExpr {
-    NodeBinExprAdd *add;
+    std::variant<NodeBinExprAdd *, NodeBinExprMul *> var;
 };
 
 // Basic expression nodes
@@ -92,79 +92,116 @@ class Parser {
         }
         return std::nullopt;
     }
-    std::optional<NodeExpr *> parseExpr() {
-        if (auto term = parseTerm()) {
-            if (tryConsume(TokenType::plus).has_value()) {
-                auto binExpr = _allocator.alloc<NodeBinExpr>();
-                auto binExprAdd = _allocator.alloc<NodeBinExprAdd>();
+    std::optional<NodeExpr *> parseExpr(int minPrec = 0) {
+        auto termLHS = parseTerm();
 
-                auto lhsExpr = _allocator.alloc<NodeExpr>();
-                lhsExpr->var = term.value();
+        if (!termLHS.has_value()) { return std::nullopt; }
 
-                binExprAdd->lhs = lhsExpr;
+        auto exprLHS = _allocator.alloc<NodeExpr>();
+        exprLHS->var = termLHS.value();
 
-                if (auto rhs = parseExpr()) {
-                    binExprAdd->rhs = rhs.value();
-                    binExpr->add = binExprAdd;
+        while (true) {
+            auto current = peek();
 
-                    auto expr = _allocator.alloc<NodeExpr>();
-                    expr->var = binExpr;
+            if (!current.has_value()) { break; }
 
-                    return expr;
-                } else {
-                    std::cerr << "Expected an expression after '+'"
-                              << std::endl;
-                    exit(EXIT_FAILURE);
-                }
+            auto prec = binPrec(current->type);
+
+            if (!prec.has_value() || prec.value() < minPrec) { break; }
+
+            Token op = consume();
+
+            auto exprRHS = parseExpr(prec.value() + 1);
+
+            if (!exprRHS.has_value()) {
+                std::cerr << "Unable to parse expression\n";
+                exit(EXIT_FAILURE);
             }
 
-            auto expr = _allocator.alloc<NodeExpr>();
-            expr->var = term.value();
+            auto expr = _allocator.alloc<NodeBinExpr>();
+            auto exprLeft = _allocator.alloc<NodeExpr>();
 
-            return expr;
+            exprLeft->var = exprLHS->var;
 
-        } else {
-            return std::nullopt;
+            if (op.type == TokenType::plus) {
+                auto add = _allocator.alloc<NodeBinExprAdd>();
+
+                add->lhs = exprLeft;
+                add->rhs = exprRHS.value();
+
+                expr->var = add;
+            } else if (op.type == TokenType::mul) {
+                auto mul = _allocator.alloc<NodeBinExprMul>();
+
+                mul->lhs = exprLeft;
+                mul->rhs = exprRHS.value();
+
+                expr->var = mul;
+            }
+
+            exprLHS->var = expr;
         }
-    }
 
+        return exprLHS;
+    }
     std::optional<NodeStmt> parseStmt() {
-        if (peek().value().type == TokenType::shevti && peek(1).has_value() &&
-            peek(1).value().type == TokenType::openParen) {
+        if (peek().has_value() && peek().value().type == TokenType::shevti) {
+            if (!peek(1).has_value() ||
+                peek(1).value().type != TokenType::openParen) {
+                std::cerr << "Expected '('\n";
+                exit(EXIT_FAILURE);
+            }
+
             consume(2);
+
             auto stmtShevti = _allocator.alloc<NodeStmtShevti>();
+
             if (auto nodeExpr = parseExpr()) {
                 stmtShevti->expr = nodeExpr.value();
             } else {
-                std::cerr << "Invalid expression" << std::endl;
+                std::cerr << "Invalid expression\n";
                 exit(EXIT_FAILURE);
             }
+
             tryConsume(TokenType::closeParen, "Expected ')'");
             tryConsume(TokenType::semi, "Expected ';'");
 
             return NodeStmt{.var = stmtShevti};
-        } else if (peek().has_value() &&
-                   peek().value().type == TokenType::_ank &&
-                   peek(1).has_value() &&
-                   peek(1).value().type == TokenType::id &&
-                   peek(2).has_value() &&
-                   peek(2).value().type == TokenType::eq) {
+        }
+
+        if (peek().has_value() && peek().value().type == TokenType::_ank) {
+            if (!peek(1).has_value() || peek(1).value().type != TokenType::id) {
+                std::cerr << "Expected identifier after 'ank'\n";
+                exit(EXIT_FAILURE);
+            }
+
+            if (!peek(2).has_value() || peek(2).value().type != TokenType::eq) {
+                std::cerr << "Expected '=' after identifier\n";
+                exit(EXIT_FAILURE);
+            }
+
             consume();
+
             auto stmtAnk = _allocator.alloc<NodeStmtAnk>();
+
             stmtAnk->id = consume();
             consume();
+
             if (auto expr = parseExpr()) {
                 stmtAnk->expr = expr.value();
             } else {
-                std::cerr << "Invalid expression" << std::endl;
+                std::cerr << "Invalid expression\n";
                 exit(EXIT_FAILURE);
             }
+
             tryConsume(TokenType::semi, "Expected ';'");
+
             return NodeStmt{.var = stmtAnk};
-        } else {
-            return std::nullopt;
         }
+
+        return std::nullopt;
     }
+
     std::optional<NodeExit> parseExit() {
         std::optional<NodeExit> exitNode;
         while (peek().has_value()) {
@@ -204,8 +241,19 @@ class Parser {
             if (auto stmt = parseStmt()) {
                 prog.stmts.push_back(stmt.value());
             } else {
-                std::cerr << "Invalid Statement" << std::endl;
-                exit(EXIT_FAILURE);
+                std::cerr << "Invalid Statement";
+
+                if (peek().has_value()) {
+                    std::cerr << " at token type: "
+                              << static_cast<int>(peek().value().type);
+
+                    if (peek().value().value.has_value()) {
+                        std::cerr << " value: " << peek().value().value.value();
+                    }
+                }
+
+                std::cerr << '\n';
+                return std::nullopt;
             }
         }
         return prog;

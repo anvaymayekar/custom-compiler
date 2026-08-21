@@ -16,9 +16,20 @@ enum class TokenType {
     id,
     _ank,
     eq,
-    plus
+    plus,
+    mul
 };
 
+std::optional<int> binPrec(TokenType type) {
+    switch (type) {
+        case TokenType::plus:
+            return 0;
+        case TokenType::mul:
+            return 1;
+        default:
+            return std::nullopt;
+    }
+}
 struct Token {
     TokenType type;
     std::optional<std::string> value;
@@ -75,6 +86,11 @@ class Tokenizer {
             } else if (peek().value() == '+') {
                 consume();
                 tokens.push_back({.type = TokenType::plus});
+                continue;
+
+            } else if (peek().value() == '*') {
+                consume();
+                tokens.push_back({.type = TokenType::mul});
                 continue;
             } else if (std::isspace(peek().value())) {
                 consume();

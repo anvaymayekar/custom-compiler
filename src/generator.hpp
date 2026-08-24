@@ -1,10 +1,11 @@
 #pragma once
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include "parser.hpp"
@@ -23,15 +24,19 @@ class Generator {
                 _gen->push("rax");
             }
             void operator()(const NodeTermId *nodeTermId) const {
-                auto temp = nodeTermId->id.value.value();
-                if (!_gen->_vars.contains(temp)) {
-                    std::cerr << "Undeclared identifier: " << temp << std::endl;
+                auto it = std::find_if(_gen->_vars.cbegin(), _gen->_vars.cend(),
+                                       [&](const Var &var) {
+                                           return var.name ==
+                                                  nodeTermId->id.value.value();
+                                       });
+                if (it == _gen->_vars.cend()) {
+                    std::cerr << "Undeclared identifier: "
+                              << nodeTermId->id.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                const auto &var = _gen->_vars.at(temp);
                 std::stringstream offset;
                 offset << "QWORD [rsp + "
-                       << (_gen->_stackSize - var.stackLoc - 1) * 8 << "]\n";
+                       << (_gen->_stackSize - (*it).stackLoc - 1) * 8 << "]\n";
                 _gen->push(offset.str());
             }
             void operator()(const NodeTermParen *nodeTermParen) const {
@@ -108,14 +113,22 @@ class Generator {
             }
             void operator()(const NodeStmtAnk *stmtAnk) {
                 auto temp = stmtAnk->id.value.value();
-                if (_gen->_vars.contains(temp)) {
-                    std::cerr << "Identifier already declared: " << temp
-                              << std::endl;
+                auto it = std::find_if(_gen->_vars.cbegin(), _gen->_vars.cend(),
+                                       [&](const Var &var) {
+                                           return var.name ==
+                                                  stmtAnk->id.value.value();
+                                       });
+
+                if (it != _gen->_vars.cend()) {
+                    std::cerr << "Identifier already declared: "
+                              << stmtAnk->id.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                _gen->_vars.insert({stmtAnk->id.value.value(),
-                                    Var{.stackLoc = _gen->_stackSize}});
+                _gen->_vars.push_back({.name = stmtAnk->id.value.value(),
+                                       .stackLoc = _gen->_stackSize});
                 _gen->genExpr(stmtAnk->expr);
+            }
+            void operator()(const NodeStmtScope *scope) const {
             }
         };
         StmtVisitor visitor{._gen = this};
@@ -142,11 +155,12 @@ class Generator {
     }
 
     struct Var {
+        std::string name;
         size_t stackLoc;
     };
 
     const NodeProg _prog;
     std::stringstream _output;
     size_t _stackSize = 0;
-    std::unordered_map<std::string, Var> _vars{};
+    std::vector<Var> _vars{};
 };

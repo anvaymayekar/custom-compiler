@@ -19,7 +19,9 @@ enum class TokenType {
     plus,
     mul,
     sub,
-    div
+    div,
+    openCurly,
+    closeCurly
 };
 
 std::optional<int> binPrec(TokenType type) {
@@ -94,6 +96,12 @@ class Tokenizer {
             } else if (peek().value() == '/') {
                 consume();
                 tokens.push_back({.type = TokenType::div});
+            } else if (peek().value() == '{') {
+                consume();
+                tokens.push_back({.type = TokenType::openCurly});
+            } else if (peek().value() == '}') {
+                consume();
+                tokens.push_back({.type = TokenType::closeCurly});
             } else if (std::isspace(peek().value())) {
                 consume();
             } else {

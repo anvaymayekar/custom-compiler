@@ -72,9 +72,14 @@ struct NodeStmtAnk {
     NodeExpr *expr;
 };
 
+struct NodeStmt;
+
+struct NodeStmtScope {
+    std::vector<NodeStmt *> stmts;
+};
 // Statement
 struct NodeStmt {
-    std::variant<NodeStmtShevti *, NodeStmtAnk *> var;
+    std::variant<NodeStmtShevti *, NodeStmtAnk *, NodeStmtScope *> var;
 };
 
 // Program

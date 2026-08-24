@@ -34,6 +34,9 @@ class Generator {
                        << (_gen->_stackSize - var.stackLoc - 1) * 8 << "]\n";
                 _gen->push(offset.str());
             }
+            void operator()(const NodeTermParen *nodeTermParen) const {
+                _gen->genExpr(nodeTermParen->expr);
+            }
         };
         TermVisitor visitor({._gen = this});
         std::visit(visitor, term->var);

@@ -51,8 +51,11 @@ struct NodeTermId {
     Token id;
 };
 
+struct NodeTermParen {
+    NodeExpr *expr;
+};
 struct NodeTerm {
-    std::variant<NodeTermAnk *, NodeTermId *> var;
+    std::variant<NodeTermAnk *, NodeTermId *, NodeTermParen *> var;
 };
 // Expression node
 struct NodeExpr {
@@ -100,6 +103,18 @@ class Parser {
             nodeTermId->id = termId.value();
             auto term = _allocator.alloc<NodeTerm>();
             term->var = nodeTermId;
+            return term;
+        } else if (auto openParen = tryConsume(TokenType::openParen)) {
+            auto expr = parseExpr();
+            if (!expr.has_value()) {
+                std::cerr << "Expected expression" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            tryConsume(TokenType::closeParen, "Expected ')'");
+            auto termParen = _allocator.alloc<NodeTermParen>();
+            termParen->expr = expr.value();
+            auto term = _allocator.alloc<NodeTerm>();
+            term->var = termParen;
             return term;
         }
         return std::nullopt;

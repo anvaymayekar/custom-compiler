@@ -55,15 +55,12 @@ class Tokenizer {
                 if (buffer == "shevti") {
                     tokens.push_back({.type = TokenType::shevti});
                     buffer.clear();
-                    continue;
                 } else if (buffer == "ank") {
                     tokens.push_back({.type = TokenType::_ank});
                     buffer.clear();
-                    continue;
                 } else {
                     tokens.push_back({.type = TokenType::id, .value = buffer});
                     buffer.clear();
-                    continue;
                 }
             } else if (std::isdigit(peek().value())) {
                 buffer.push_back(consume());
@@ -72,7 +69,6 @@ class Tokenizer {
                 }
                 tokens.push_back({.type = TokenType::ank, .value = buffer});
                 buffer.clear();
-                continue;
             } else if (peek().value() == '(') {
                 consume();
                 tokens.push_back({.type = TokenType::openParen});
@@ -82,31 +78,24 @@ class Tokenizer {
             } else if (peek().value() == ';') {
                 tokens.push_back({.type = TokenType::semi});
                 consume();
-                continue;
             } else if (peek().value() == '=') {
                 consume();
                 tokens.push_back({.type = TokenType::eq});
-                continue;
             } else if (peek().value() == '+') {
                 consume();
                 tokens.push_back({.type = TokenType::plus});
-                continue;
 
             } else if (peek().value() == '*') {
                 consume();
                 tokens.push_back({.type = TokenType::mul});
-                continue;
             } else if (peek().value() == '-') {
                 consume();
                 tokens.push_back({.type = TokenType::sub});
-                continue;
             } else if (peek().value() == '/') {
                 consume();
                 tokens.push_back({.type = TokenType::div});
-                continue;
             } else if (std::isspace(peek().value())) {
                 consume();
-                continue;
             } else {
                 std::cerr << "Unexpected character: " << peek().value() << "\n";
                 exit(EXIT_FAILURE);

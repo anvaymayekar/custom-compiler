@@ -42,19 +42,38 @@ class Generator {
         struct BinExprVisitor {
             Generator *_gen;
             void operator()(const NodeBinExprAdd *add) const {
-                _gen->genExpr(add->lhs);
                 _gen->genExpr(add->rhs);
+                _gen->genExpr(add->lhs);
                 _gen->pop("rax");
                 _gen->pop("rbx");
                 _gen->_output << "    add rax, rbx\n";
                 _gen->push("rax");
             }
+            void operator()(const NodeBinExprSub *sub) const {
+                _gen->genExpr(sub->rhs);
+                _gen->genExpr(sub->lhs);
+                _gen->pop("rax");
+                _gen->pop("rbx");
+                _gen->_output << "    sub rax, rbx\n";
+                _gen->push("rax");
+            }
+
             void operator()(const NodeBinExprMul *mul) const {
-                _gen->genExpr(mul->lhs);
                 _gen->genExpr(mul->rhs);
+                _gen->genExpr(mul->lhs);
                 _gen->pop("rax");
                 _gen->pop("rbx");
                 _gen->_output << "    mul rbx\n";
+                _gen->push("rax");
+            }
+            void operator()(const NodeBinExprDiv *div) const {
+                _gen->genExpr(div->rhs);
+                _gen->genExpr(div->lhs);
+                _gen->pop("rax");
+                _gen->pop("rbx");
+                _gen->_output << "    xor rdx, rdx\n";
+                _gen->_output << "    div rbx\n";
+
                 _gen->push("rax");
             }
         };

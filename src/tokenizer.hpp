@@ -17,14 +17,18 @@ enum class TokenType {
     _ank,
     eq,
     plus,
-    mul
+    mul,
+    sub,
+    div
 };
 
 std::optional<int> binPrec(TokenType type) {
     switch (type) {
         case TokenType::plus:
+        case TokenType::sub:
             return 0;
         case TokenType::mul:
+        case TokenType::div:
             return 1;
         default:
             return std::nullopt;
@@ -91,6 +95,14 @@ class Tokenizer {
             } else if (peek().value() == '*') {
                 consume();
                 tokens.push_back({.type = TokenType::mul});
+                continue;
+            } else if (peek().value() == '-') {
+                consume();
+                tokens.push_back({.type = TokenType::sub});
+                continue;
+            } else if (peek().value() == '/') {
+                consume();
+                tokens.push_back({.type = TokenType::div});
                 continue;
             } else if (std::isspace(peek().value())) {
                 consume();

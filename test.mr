@@ -1,3 +1,3 @@
-ank a = 10 + 90 * 5;
-ank b = 1;
-shevti(a + b);
+ank a = 3 - 2;
+ank b = a + 2;
+shevti(b / 3);

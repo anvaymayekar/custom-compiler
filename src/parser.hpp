@@ -25,9 +25,21 @@ struct NodeBinExprMul {
     NodeExpr *rhs;
 };
 
+struct NodeBinExprSub {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+
+struct NodeBinExprDiv {
+    NodeExpr *lhs;
+    NodeExpr *rhs;
+};
+
 // Binary expression node
 struct NodeBinExpr {
-    std::variant<NodeBinExprAdd *, NodeBinExprMul *> var;
+    std::variant<NodeBinExprAdd *, NodeBinExprMul *, NodeBinExprSub *,
+                 NodeBinExprDiv *>
+        var;
 };
 
 // Basic expression nodes
@@ -137,6 +149,22 @@ class Parser {
                 mul->rhs = exprRHS.value();
 
                 expr->var = mul;
+            } else if (op.type == TokenType::sub) {
+                auto sub = _allocator.alloc<NodeBinExprSub>();
+
+                sub->lhs = exprLeft;
+                sub->rhs = exprRHS.value();
+
+                expr->var = sub;
+            } else if (op.type == TokenType::div) {
+                auto div = _allocator.alloc<NodeBinExprDiv>();
+
+                div->lhs = exprLeft;
+                div->rhs = exprRHS.value();
+
+                expr->var = div;
+            } else {
+                assert(false);
             }
 
             exprLHS->var = expr;

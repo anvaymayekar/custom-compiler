@@ -84,7 +84,7 @@ struct NodeStmt {
 
 // Program
 struct NodeProg {
-    std::vector<NodeStmt> stmts;
+    std::vector<NodeStmt *> stmts;
 };
 
 // Exit node
@@ -192,7 +192,7 @@ class Parser {
 
         return exprLHS;
     }
-    std::optional<NodeStmt> parseStmt() {
+    std::optional<NodeStmt *> parseStmt() {
         if (peek().has_value() && peek().value().type == TokenType::shevti) {
             if (!peek(1).has_value() ||
                 peek(1).value().type != TokenType::openParen) {
@@ -214,7 +214,9 @@ class Parser {
             tryConsume(TokenType::closeParen, "Expected ')'");
             tryConsume(TokenType::semi, "Expected ';'");
 
-            return NodeStmt{.var = stmtShevti};
+            auto stmt = _allocator.alloc<NodeStmt>();
+            stmt->var = stmtShevti;
+            return stmt;
         }
 
         if (peek().has_value() && peek().value().type == TokenType::_ank) {
@@ -244,9 +246,22 @@ class Parser {
 
             tryConsume(TokenType::semi, "Expected ';'");
 
-            return NodeStmt{.var = stmtAnk};
+            auto stmt = _allocator.alloc<NodeStmt>();
+            stmt->var = stmtAnk;
+            return stmt;
         }
-
+        if (peek().has_value() && peek().value().type == TokenType::openCurly) {
+            if (auto openCurly = tryConsume(TokenType::openCurly)) {
+                auto scope = _allocator.alloc<NodeStmtScope>();
+                while (auto stmt = parseStmt()) {
+                    scope->stmts.push_back(stmt.value());
+                }
+                tryConsume(TokenType::closeCurly, "Expected '}'");
+                auto stmt = _allocator.alloc<NodeStmt>();
+                stmt->var = scope;
+                return stmt;
+            }
+        }
         return std::nullopt;
     }
 

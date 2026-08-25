@@ -1,3 +1,7 @@
-ank a = 8 * (2 + 5);
+ank a = 4 * (2 + 5);
+{
+    ank b = 1;
+}
 ank b = (a - 8) / 2;
+
 shevti(b - 2);

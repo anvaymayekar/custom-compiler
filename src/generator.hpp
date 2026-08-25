@@ -129,6 +129,11 @@ class Generator {
                 _gen->genExpr(stmtAnk->expr);
             }
             void operator()(const NodeStmtScope *scope) const {
+                _gen->beginScope();
+                for (const NodeStmt *stmt : scope->stmts) {
+                    _gen->genStmt(*stmt);
+                }
+                _gen->endScope();
             }
         };
         StmtVisitor visitor{._gen = this};
@@ -137,7 +142,7 @@ class Generator {
     [[nodiscard]] std::string generate() {
         _output << "global _start\n";
         _output << "_start:\n";
-        for (const NodeStmt &stmt : _prog.stmts) { genStmt(stmt); }
+        for (const NodeStmt *stmt : _prog.stmts) { genStmt(*stmt); }
         _output << "    mov rax, 60\n";
         _output << "    mov rdi, 0\n";
         _output << "    syscall\n";
@@ -153,7 +158,16 @@ class Generator {
         _output << "    pop " << reg << "\n";
         _stackSize--;
     }
-
+    void beginScope() {
+        _scopes.push_back(_vars.size());
+    }
+    void endScope() {
+        size_t popCount = _vars.size() - _scopes.back();
+        _output << "     add rsp, " << popCount * 8 << "\n";
+        _stackSize -= popCount;
+        for (int i = 0; i < popCount; i++) { _vars.pop_back(); }
+        _scopes.pop_back();
+    }
     struct Var {
         std::string name;
         size_t stackLoc;
@@ -163,4 +177,5 @@ class Generator {
     std::stringstream _output;
     size_t _stackSize = 0;
     std::vector<Var> _vars{};
+    std::vector<size_t> _scopes{};
 };

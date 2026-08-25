@@ -1,5 +1,5 @@
 ank a = 0;
-jar (a + 1){
+jar (a + 2 / 2 * 1){
     shevti(10);
 }
 

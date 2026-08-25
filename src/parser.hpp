@@ -175,14 +175,14 @@ class Parser {
                 mul->rhs = exprRHS.value();
 
                 expr->var = mul;
-            } else if (op.type == TokenType::sub) {
+            } else if (op.type == TokenType::minus) {
                 auto sub = _allocator.alloc<NodeBinExprSub>();
 
                 sub->lhs = exprLeft;
                 sub->rhs = exprRHS.value();
 
                 expr->var = sub;
-            } else if (op.type == TokenType::div) {
+            } else if (op.type == TokenType::slash) {
                 auto div = _allocator.alloc<NodeBinExprDiv>();
 
                 div->lhs = exprLeft;

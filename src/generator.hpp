@@ -18,88 +18,88 @@ class Generator {
 
     void genTerm(const NodeTerm *term) {
         struct TermVisitor {
-            Generator *_gen;
+            Generator &_gen;
             void operator()(const NodeTermAnk *nodeTermAnk) const {
-                _gen->_output << "    mov rax,"
-                              << nodeTermAnk->ank.value.value() << "\n";
-                _gen->push("rax");
+                _gen._output << "    mov rax," << nodeTermAnk->ank.value.value()
+                             << "\n";
+                _gen.push("rax");
             }
             void operator()(const NodeTermId *nodeTermId) const {
-                auto it = std::find_if(_gen->_vars.cbegin(), _gen->_vars.cend(),
+                auto it = std::find_if(_gen._vars.cbegin(), _gen._vars.cend(),
                                        [&](const Var &var) {
                                            return var.name ==
                                                   nodeTermId->id.value.value();
                                        });
-                if (it == _gen->_vars.cend()) {
+                if (it == _gen._vars.cend()) {
                     std::cerr << "Undeclared identifier: "
                               << nodeTermId->id.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
                 std::stringstream offset;
                 offset << "QWORD [rsp + "
-                       << (_gen->_stackSize - (*it).stackLoc - 1) * 8 << "]";
-                _gen->push(offset.str());
+                       << (_gen._stackSize - (*it).stackLoc - 1) * 8 << "]";
+                _gen.push(offset.str());
             }
             void operator()(const NodeTermParen *nodeTermParen) const {
-                _gen->genExpr(nodeTermParen->expr);
+                _gen.genExpr(nodeTermParen->expr);
             }
         };
-        TermVisitor visitor({._gen = this});
+        TermVisitor visitor({._gen = *this});
         std::visit(visitor, term->var);
     }
     void genBinExpr(const NodeBinExpr *binExpr) {
         struct BinExprVisitor {
-            Generator *_gen;
+            Generator &_gen;
             void operator()(const NodeBinExprAdd *add) const {
-                _gen->genExpr(add->rhs);
-                _gen->genExpr(add->lhs);
-                _gen->pop("rax");
-                _gen->pop("rbx");
-                _gen->_output << "    add rax, rbx\n";
-                _gen->push("rax");
+                _gen.genExpr(add->rhs);
+                _gen.genExpr(add->lhs);
+                _gen.pop("rax");
+                _gen.pop("rbx");
+                _gen._output << "    add rax, rbx\n";
+                _gen.push("rax");
             }
             void operator()(const NodeBinExprSub *sub) const {
-                _gen->genExpr(sub->rhs);
-                _gen->genExpr(sub->lhs);
-                _gen->pop("rax");
-                _gen->pop("rbx");
-                _gen->_output << "    sub rax, rbx\n";
-                _gen->push("rax");
+                _gen.genExpr(sub->rhs);
+                _gen.genExpr(sub->lhs);
+                _gen.pop("rax");
+                _gen.pop("rbx");
+                _gen._output << "    sub rax, rbx\n";
+                _gen.push("rax");
             }
 
             void operator()(const NodeBinExprMul *mul) const {
-                _gen->genExpr(mul->rhs);
-                _gen->genExpr(mul->lhs);
-                _gen->pop("rax");
-                _gen->pop("rbx");
-                _gen->_output << "    mul rbx\n";
-                _gen->push("rax");
+                _gen.genExpr(mul->rhs);
+                _gen.genExpr(mul->lhs);
+                _gen.pop("rax");
+                _gen.pop("rbx");
+                _gen._output << "    mul rbx\n";
+                _gen.push("rax");
             }
             void operator()(const NodeBinExprDiv *div) const {
-                _gen->genExpr(div->rhs);
-                _gen->genExpr(div->lhs);
-                _gen->pop("rax");
-                _gen->pop("rbx");
-                _gen->_output << "    xor rdx, rdx\n";
-                _gen->_output << "    div rbx\n";
+                _gen.genExpr(div->rhs);
+                _gen.genExpr(div->lhs);
+                _gen.pop("rax");
+                _gen.pop("rbx");
+                _gen._output << "    xor rdx, rdx\n";
+                _gen._output << "    div rbx\n";
 
-                _gen->push("rax");
+                _gen.push("rax");
             }
         };
-        BinExprVisitor visitor{._gen = this};
+        BinExprVisitor visitor{._gen = *this};
         std::visit(visitor, binExpr->var);
     }
     void genExpr(const NodeExpr *expr) {
         struct ExprVisitor {
-            Generator *_gen;
+            Generator &_gen;
             void operator()(const NodeTerm *term) {
-                _gen->genTerm(term);
+                _gen.genTerm(term);
             }
             void operator()(const NodeBinExpr *binExpr) const {
-                _gen->genBinExpr(binExpr);
+                _gen.genBinExpr(binExpr);
             }
         };
-        ExprVisitor visitor{._gen = this};
+        ExprVisitor visitor{._gen = *this};
         std::visit(visitor, expr->var);
     }
 
@@ -110,44 +110,44 @@ class Generator {
     }
     void genStmt(const NodeStmt &stmt) {
         struct StmtVisitor {
-            Generator *_gen;
+            Generator &_gen;
             void operator()(const NodeStmtShevti *stmtShevti) const {
-                _gen->genExpr(stmtShevti->expr);
-                _gen->_output << "    mov rax, 60\n";
-                _gen->pop("rdi");
-                _gen->_output << "    syscall\n";
+                _gen.genExpr(stmtShevti->expr);
+                _gen._output << "    mov rax, 60\n";
+                _gen.pop("rdi");
+                _gen._output << "    syscall\n";
             }
             void operator()(const NodeStmtAnk *stmtAnk) {
                 auto temp = stmtAnk->id.value.value();
-                auto it = std::find_if(_gen->_vars.cbegin(), _gen->_vars.cend(),
+                auto it = std::find_if(_gen._vars.cbegin(), _gen._vars.cend(),
                                        [&](const Var &var) {
                                            return var.name ==
                                                   stmtAnk->id.value.value();
                                        });
 
-                if (it != _gen->_vars.cend()) {
+                if (it != _gen._vars.cend()) {
                     std::cerr << "Identifier already declared: "
                               << stmtAnk->id.value.value() << std::endl;
                     exit(EXIT_FAILURE);
                 }
-                _gen->_vars.push_back({.name = stmtAnk->id.value.value(),
-                                       .stackLoc = _gen->_stackSize});
-                _gen->genExpr(stmtAnk->expr);
+                _gen._vars.push_back({.name = stmtAnk->id.value.value(),
+                                      .stackLoc = _gen._stackSize});
+                _gen.genExpr(stmtAnk->expr);
             }
             void operator()(const NodeStmtScope *scope) const {
-                _gen->genScope(scope);
+                _gen.genScope(scope);
             }
             void operator()(const NodeStmtJar *stmtJar) const {
-                _gen->genExpr(stmtJar->expr);
-                _gen->pop("rax");
-                std::string label = _gen->createLabel();
-                _gen->_output << "     test rax, rax\n";
-                _gen->_output << "     jz " << label << "\n";
-                _gen->genScope(stmtJar->scope);
-                _gen->_output << label << ":\n";
+                _gen.genExpr(stmtJar->expr);
+                _gen.pop("rax");
+                std::string label = _gen.createLabel();
+                _gen._output << "     test rax, rax\n";
+                _gen._output << "     jz " << label << "\n";
+                _gen.genScope(stmtJar->scope);
+                _gen._output << label << ":\n";
             }
         };
-        StmtVisitor visitor{._gen = this};
+        StmtVisitor visitor{._gen = *this};
         std::visit(visitor, stmt.var);
     }
     [[nodiscard]] std::string generate() {
@@ -174,7 +174,7 @@ class Generator {
     }
     void endScope() {
         size_t popCount = _vars.size() - _scopes.back();
-        _output << "     add rsp, " << popCount * 8 << "\n";
+        _output << "    add rsp, " << popCount * 8 << "\n";
         _stackSize -= popCount;
         for (int i = 0; i < popCount; i++) { _vars.pop_back(); }
         _scopes.pop_back();

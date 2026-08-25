@@ -18,8 +18,8 @@ enum class TokenType {
     eq,
     plus,
     mul,
-    sub,
-    div,
+    minus,
+    slash,
     openCurly,
     closeCurly,
     jar
@@ -28,10 +28,10 @@ enum class TokenType {
 std::optional<int> binPrec(TokenType type) {
     switch (type) {
         case TokenType::plus:
-        case TokenType::sub:
+        case TokenType::minus:
             return 0;
         case TokenType::mul:
-        case TokenType::div:
+        case TokenType::slash:
             return 1;
         default:
             return std::nullopt;
@@ -96,10 +96,10 @@ class Tokenizer {
                 tokens.push_back({.type = TokenType::mul});
             } else if (peek().value() == '-') {
                 consume();
-                tokens.push_back({.type = TokenType::sub});
+                tokens.push_back({.type = TokenType::minus});
             } else if (peek().value() == '/') {
                 consume();
-                tokens.push_back({.type = TokenType::div});
+                tokens.push_back({.type = TokenType::slash});
             } else if (peek().value() == '{') {
                 consume();
                 tokens.push_back({.type = TokenType::openCurly});

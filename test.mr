@@ -2,4 +2,7 @@ ank a = 10 / 2;
 
 ank b = 4 + 6 * (3 - 2);
 // anvay
+/*
+anvay mayekar
+
 shevti(b-a);

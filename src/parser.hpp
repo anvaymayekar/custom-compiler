@@ -273,10 +273,9 @@ class Parser {
                 auto stmt = _allocator.alloc<NodeStmt>();
                 stmt->var = scope.value();
                 return stmt;
-            } else {
-                std::cerr << "Invalid scope\n";
-                exit(EXIT_FAILURE);
             }
+            std::cerr << "Invalid scope\n";
+            exit(EXIT_FAILURE);
         }
         if (peek().has_value() && peek().value().type == TokenType::jar) {
             if (auto jar = tryConsume(TokenType::jar)) {

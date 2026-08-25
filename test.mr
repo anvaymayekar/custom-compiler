@@ -1,6 +1,6 @@
-ank a = 0;
+ank a = 5;
 jar (a + 2 / 2 * 3){
-    shevti(8);
+    shevti(4);
 }
 
 shevti(1);

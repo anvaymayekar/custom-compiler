@@ -25,7 +25,7 @@ enum class TokenType {
     jar
 };
 
-std::optional<int> binPrec(TokenType type) {
+inline std::optional<int> binPrec(const TokenType type) {
     switch (type) {
         case TokenType::plus:
         case TokenType::minus:
@@ -36,7 +36,7 @@ std::optional<int> binPrec(TokenType type) {
         default:
             return std::nullopt;
     }
-}
+};
 struct Token {
     TokenType type;
     std::optional<std::string> value;

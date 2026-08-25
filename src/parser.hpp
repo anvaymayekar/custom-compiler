@@ -77,9 +77,15 @@ struct NodeStmt;
 struct NodeStmtScope {
     std::vector<NodeStmt *> stmts;
 };
+struct NodeStmtJar {
+    NodeExpr *expr;
+    NodeStmtScope *scope;
+};
 // Statement
 struct NodeStmt {
-    std::variant<NodeStmtShevti *, NodeStmtAnk *, NodeStmtScope *> var;
+    std::variant<NodeStmtShevti *, NodeStmtAnk *, NodeStmtScope *,
+                 NodeStmtJar *>
+        var;
 };
 
 // Program
@@ -192,6 +198,18 @@ class Parser {
 
         return exprLHS;
     }
+
+    std::optional<NodeStmtScope *> parseScope() {
+        if (!tryConsume(TokenType::openCurly).has_value()) {
+            return std::nullopt;
+        }
+        auto scope = _allocator.alloc<NodeStmtScope>();
+        while (auto stmt = parseStmt()) {
+            scope->stmts.push_back(stmt.value());
+        }
+        tryConsume(TokenType::closeCurly, "Expected '}'");
+        return scope;
+    }
     std::optional<NodeStmt *> parseStmt() {
         if (peek().has_value() && peek().value().type == TokenType::shevti) {
             if (!peek(1).has_value() ||
@@ -251,14 +269,34 @@ class Parser {
             return stmt;
         }
         if (peek().has_value() && peek().value().type == TokenType::openCurly) {
-            if (auto openCurly = tryConsume(TokenType::openCurly)) {
-                auto scope = _allocator.alloc<NodeStmtScope>();
-                while (auto stmt = parseStmt()) {
-                    scope->stmts.push_back(stmt.value());
-                }
-                tryConsume(TokenType::closeCurly, "Expected '}'");
+            if (auto scope = parseScope()) {
                 auto stmt = _allocator.alloc<NodeStmt>();
-                stmt->var = scope;
+                stmt->var = scope.value();
+                return stmt;
+            } else {
+                std::cerr << "Invalid scope\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        if (peek().has_value() && peek().value().type == TokenType::jar) {
+            if (auto jar = tryConsume(TokenType::jar)) {
+                tryConsume(TokenType::openParen, "Expected '('");
+                auto stmtJar = _allocator.alloc<NodeStmtJar>();
+                if (auto expr = parseExpr()) {
+                    stmtJar->expr = expr.value();
+                } else {
+                    std::cerr << "Invalid expression\n";
+                    exit(EXIT_FAILURE);
+                }
+                tryConsume(TokenType::closeParen, "Expected ')'");
+                if (auto scope = parseScope()) {
+                    stmtJar->scope = scope.value();
+                } else {
+                    std::cerr << "Invalid scope\n";
+                    exit(EXIT_FAILURE);
+                }
+                auto stmt = _allocator.alloc<NodeStmt>();
+                stmt->var = stmtJar;
                 return stmt;
             }
         }

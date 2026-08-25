@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <format>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -36,7 +37,7 @@ class Generator {
                 }
                 std::stringstream offset;
                 offset << "QWORD [rsp + "
-                       << (_gen->_stackSize - (*it).stackLoc - 1) * 8 << "]\n";
+                       << (_gen->_stackSize - (*it).stackLoc - 1) * 8 << "]";
                 _gen->push(offset.str());
             }
             void operator()(const NodeTermParen *nodeTermParen) const {
@@ -102,6 +103,11 @@ class Generator {
         std::visit(visitor, expr->var);
     }
 
+    void genScope(const NodeStmtScope *scope) {
+        beginScope();
+        for (const NodeStmt *stmt : scope->stmts) { genStmt(*stmt); }
+        endScope();
+    }
     void genStmt(const NodeStmt &stmt) {
         struct StmtVisitor {
             Generator *_gen;
@@ -129,11 +135,16 @@ class Generator {
                 _gen->genExpr(stmtAnk->expr);
             }
             void operator()(const NodeStmtScope *scope) const {
-                _gen->beginScope();
-                for (const NodeStmt *stmt : scope->stmts) {
-                    _gen->genStmt(*stmt);
-                }
-                _gen->endScope();
+                _gen->genScope(scope);
+            }
+            void operator()(const NodeStmtJar *stmtJar) const {
+                _gen->genExpr(stmtJar->expr);
+                _gen->pop("rax");
+                std::string label = _gen->createLabel();
+                _gen->_output << "     test rax, rax\n";
+                _gen->_output << "     jz " << label << "\n";
+                _gen->genScope(stmtJar->scope);
+                _gen->_output << label << ":\n";
             }
         };
         StmtVisitor visitor{._gen = this};
@@ -168,6 +179,12 @@ class Generator {
         for (int i = 0; i < popCount; i++) { _vars.pop_back(); }
         _scopes.pop_back();
     }
+
+    std::string createLabel() {
+        std::stringstream ss;
+        ss << "label" << _labelCount++;
+        return ss.str();
+    }
     struct Var {
         std::string name;
         size_t stackLoc;
@@ -178,4 +195,5 @@ class Generator {
     size_t _stackSize = 0;
     std::vector<Var> _vars{};
     std::vector<size_t> _scopes{};
+    int _labelCount = 0;
 };

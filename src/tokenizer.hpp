@@ -21,7 +21,8 @@ enum class TokenType {
     sub,
     div,
     openCurly,
-    closeCurly
+    closeCurly,
+    jar
 };
 
 std::optional<int> binPrec(TokenType type) {
@@ -59,6 +60,9 @@ class Tokenizer {
                     buffer.clear();
                 } else if (buffer == "ank") {
                     tokens.push_back({.type = TokenType::_ank});
+                    buffer.clear();
+                } else if (buffer == "jar") {
+                    tokens.push_back({.type = TokenType::jar});
                     buffer.clear();
                 } else {
                     tokens.push_back({.type = TokenType::id, .value = buffer});

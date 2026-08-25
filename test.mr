@@ -1,7 +1,6 @@
-ank a = 4 * (2 + 5);
-{
-    ank b = 1;
+ank a = 0;
+jar (a + 1){
+    shevti(10);
 }
-ank b = (a - 8) / 2;
 
-shevti(b - 2);
+shevti(1);

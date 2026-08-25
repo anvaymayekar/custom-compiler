@@ -75,6 +75,13 @@ class Tokenizer {
                 }
                 tokens.push_back({.type = TokenType::ank, .value = buffer});
                 buffer.clear();
+            } else if (peek().value() == '/' && peek(1).has_value() &&
+                       peek(1).value() == '/') {
+                consume();
+                consume();
+                while (peek().has_value() && peek().value() != '\n') {
+                    consume();
+                }
             } else if (peek().value() == '(') {
                 consume();
                 tokens.push_back({.type = TokenType::openParen});

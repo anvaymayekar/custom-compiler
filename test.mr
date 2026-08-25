@@ -1,6 +1,5 @@
-ank a = 5;
-jar (a + 2 / 2 * 3){
-    shevti(4);
-}
+ank a = 10 / 2;
 
-shevti(1);
+ank b = 4 + 6 * (3 - 2);
+// anvay
+shevti(b-a);

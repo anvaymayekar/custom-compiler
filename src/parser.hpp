@@ -116,7 +116,7 @@ class Parser {
             term->var = nodeTermId;
             return term;
         } else if (auto openParen = tryConsume(TokenType::openParen)) {
-            auto expr = parseExpr();
+            const auto expr = parseExpr();
             if (!expr.has_value()) {
                 std::cerr << "Expected expression" << std::endl;
                 exit(EXIT_FAILURE);
@@ -147,7 +147,7 @@ class Parser {
 
             if (!prec.has_value() || prec.value() < minPrec) { break; }
 
-            Token op = consume();
+            const Token op = consume();
 
             auto exprRHS = parseExpr(prec.value() + 1);
 
@@ -204,7 +204,7 @@ class Parser {
             return std::nullopt;
         }
         auto scope = _allocator.alloc<NodeStmtScope>();
-        while (auto stmt = parseStmt()) {
+        while (const auto stmt = parseStmt()) {
             scope->stmts.push_back(stmt.value());
         }
         tryConsume(TokenType::closeCurly, "Expected '}'");
@@ -222,7 +222,7 @@ class Parser {
 
             auto stmtShevti = _allocator.alloc<NodeStmtShevti>();
 
-            if (auto nodeExpr = parseExpr()) {
+            if (const auto nodeExpr = parseExpr()) {
                 stmtShevti->expr = nodeExpr.value();
             } else {
                 std::cerr << "Invalid expression\n";
@@ -255,7 +255,7 @@ class Parser {
             stmtAnk->id = consume();
             consume();
 
-            if (auto expr = parseExpr()) {
+            if (const auto expr = parseExpr()) {
                 stmtAnk->expr = expr.value();
             } else {
                 std::cerr << "Invalid expression\n";
@@ -282,7 +282,7 @@ class Parser {
             if (auto jar = tryConsume(TokenType::jar)) {
                 tryConsume(TokenType::openParen, "Expected '('");
                 auto stmtJar = _allocator.alloc<NodeStmtJar>();
-                if (auto expr = parseExpr()) {
+                if (const auto expr = parseExpr()) {
                     stmtJar->expr = expr.value();
                 } else {
                     std::cerr << "Invalid expression\n";
@@ -310,7 +310,7 @@ class Parser {
                 peek(1).has_value() &&
                 peek(1).value().type == TokenType::openParen) {
                 consume(2);
-                if (auto nodeExpr = parseExpr()) {
+                if (const auto nodeExpr = parseExpr()) {
                     exitNode = NodeExit{.expr = nodeExpr.value()};
                 } else {
                     std::cerr << "Invalid expression" << std::endl;

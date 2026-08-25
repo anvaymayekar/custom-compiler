@@ -140,7 +140,7 @@ class Generator {
             void operator()(const NodeStmtJar *stmtJar) const {
                 _gen.genExpr(stmtJar->expr);
                 _gen.pop("rax");
-                std::string label = _gen.createLabel();
+                const std::string label = _gen.createLabel();
                 _gen._output << "     test rax, rax\n";
                 _gen._output << "     jz " << label << "\n";
                 _gen.genScope(stmtJar->scope);

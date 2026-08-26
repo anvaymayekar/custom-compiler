@@ -22,7 +22,9 @@ enum class TokenType {
     slash,
     openCurly,
     closeCurly,
-    jar
+    jar,
+    nahitar,
+    anyatha
 };
 
 inline std::optional<int> binPrec(const TokenType type) {
@@ -63,6 +65,12 @@ class Tokenizer {
                     buffer.clear();
                 } else if (buffer == "jar") {
                     tokens.push_back({.type = TokenType::jar});
+                    buffer.clear();
+                } else if (buffer == "nahitar") {
+                    tokens.push_back({.type = TokenType::nahitar});
+                    buffer.clear();
+                } else if (buffer == "anyatha") {
+                    tokens.push_back({.type = TokenType::anyatha});
                     buffer.clear();
                 } else {
                     tokens.push_back({.type = TokenType::id, .value = buffer});

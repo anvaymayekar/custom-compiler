@@ -77,9 +77,25 @@ struct NodeStmt;
 struct NodeStmtScope {
     std::vector<NodeStmt *> stmts;
 };
+
+struct NodeJarPred;
+
+struct NodeNahitar {
+    NodeExpr *expr;
+    NodeStmtScope *scope;
+    std::optional<NodeJarPred *> pred;
+};
+struct NodeAnyatha {
+    NodeStmtScope *scope;
+};
+
+struct NodeJarPred {
+    std::variant<NodeNahitar *, NodeAnyatha *> var;
+};
 struct NodeStmtJar {
     NodeExpr *expr;
     NodeStmtScope *scope;
+    std::optional<NodeJarPred *> pred;
 };
 // Statement
 struct NodeStmt {
@@ -210,6 +226,41 @@ class Parser {
         tryConsume(TokenType::closeCurly, "Expected '}'");
         return scope;
     }
+    std::optional<NodeJarPred *> parseJarPred() {
+        if (tryConsume(TokenType::nahitar)) {
+            tryConsume(TokenType::openParen, "Expected '('");
+            auto nahitar = _allocator.alloc<NodeNahitar>();
+            if (const auto expr = parseExpr()) {
+                nahitar->expr = expr.value();
+            } else {
+                std::cerr << "Expected expression" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            tryConsume(TokenType::closeParen, "Expected ')'");
+            if (const auto scope = parseScope()) {
+                nahitar->scope = scope.value();
+            } else {
+                std::cerr << "Expected scope" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            nahitar->pred = parseJarPred();
+            auto pred = _allocator.emplace<NodeJarPred>(nahitar);
+            return pred;
+        }
+        if (tryConsume(TokenType::anyatha)) {
+            auto anyatha = _allocator.alloc<NodeAnyatha>();
+            if (const auto scope = parseScope()) {
+                anyatha->scope = scope.value();
+            } else {
+                std::cerr << "Expected scope" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            auto pred = _allocator.emplace<NodeJarPred>(anyatha);
+            return pred;
+        }
+        return std::nullopt;
+    }
+
     std::optional<NodeStmt *> parseStmt() {
         if (peek().has_value() && peek().value().type == TokenType::shevti) {
             if (!peek(1).has_value() ||
@@ -294,6 +345,7 @@ class Parser {
                     std::cerr << "Invalid scope\n";
                     exit(EXIT_FAILURE);
                 }
+                stmtJar->pred = parseJarPred();
                 auto stmt = _allocator.alloc<NodeStmt>();
                 stmt->var = stmtJar;
                 return stmt;

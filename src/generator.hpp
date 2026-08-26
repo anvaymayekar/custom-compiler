@@ -108,6 +108,31 @@ class Generator {
         for (const NodeStmt *stmt : scope->stmts) { genStmt(*stmt); }
         endScope();
     }
+
+    void genJarPred(const NodeJarPred *pred, const std::string &endLabel) {
+        struct PredVisitor {
+            Generator &_gen;
+            const std::string &endLabel;
+            void operator()(const NodeNahitar *nahitar) const {
+                _gen.genExpr(nahitar->expr);
+                _gen.pop("rax");
+                const std::string label = _gen.createLabel();
+                _gen._output << "     test rax, rax\n";
+                _gen._output << "     jz " << label << "\n";
+                _gen.genScope(nahitar->scope);
+                _gen._output << "     jmp " << endLabel << "\n";
+                if (nahitar->pred.has_value()) {
+                    _gen._output << label << ":\n";
+                    _gen.genJarPred(nahitar->pred.value(), endLabel);
+                }
+            }
+            void operator()(const NodeAnyatha *anyatha) const {
+                _gen.genScope(anyatha->scope);
+            }
+        };
+        PredVisitor visitor{._gen = *this, .endLabel = endLabel};
+        std::visit(visitor, pred->var);
+    }
     void genStmt(const NodeStmt &stmt) {
         struct StmtVisitor {
             Generator &_gen;
@@ -145,6 +170,12 @@ class Generator {
                 _gen._output << "     jz " << label << "\n";
                 _gen.genScope(stmtJar->scope);
                 _gen._output << label << ":\n";
+
+                if (stmtJar->pred.has_value()) {
+                    const std::string endLabel = _gen.createLabel();
+                    _gen.genJarPred(stmtJar->pred.value(), endLabel);
+                    _gen._output << endLabel << ": \n";
+                }
             }
         };
         StmtVisitor visitor{._gen = *this};

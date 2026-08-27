@@ -188,12 +188,15 @@ class Generator {
                 _gen._output << "     test rax, rax\n";
                 _gen._output << "     jz " << label << "\n";
                 _gen.genScope(stmtJar->scope);
-                _gen._output << label << ":\n";
 
                 if (stmtJar->pred.has_value()) {
                     const std::string endLabel = _gen.createLabel();
+                    _gen._output << "   jmp " << endLabel << "\n";
+                    _gen._output << label << ":\n";
                     _gen.genJarPred(stmtJar->pred.value(), endLabel);
                     _gen._output << endLabel << ": \n";
+                } else {
+                    _gen._output << label << ":\n";
                 }
             }
         };

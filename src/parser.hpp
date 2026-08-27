@@ -416,7 +416,9 @@ class Parser {
                 std::cerr << "Invalid Statement";
 
                 if (peek().has_value()) {
-                    std::cerr << " at token type: "
+                    std::cerr << " at line: " << peek().value().line
+                              << " & col: " << peek().value().col
+                              << " \ntoken type: "
                               << static_cast<int>(peek().value().type);
 
                     if (peek().value().value.has_value()) {

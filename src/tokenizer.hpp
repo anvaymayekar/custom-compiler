@@ -41,6 +41,8 @@ inline std::optional<int> binPrec(const TokenType type) {
 };
 struct Token {
     TokenType type;
+    int line;
+    int col;
     std::optional<std::string> value;
 };
 
@@ -58,22 +60,35 @@ class Tokenizer {
                     buffer.push_back(consume());
                 }
                 if (buffer == "shevti") {
-                    tokens.push_back({.type = TokenType::shevti});
+                    tokens.push_back({.type = TokenType::shevti,
+                                      .line = lineCount,
+                                      .col = colCount});
                     buffer.clear();
                 } else if (buffer == "ank") {
-                    tokens.push_back({.type = TokenType::_ank});
+                    tokens.push_back({.type = TokenType::_ank,
+                                      .line = lineCount,
+                                      .col = colCount});
                     buffer.clear();
                 } else if (buffer == "jar") {
-                    tokens.push_back({.type = TokenType::jar});
+                    tokens.push_back({.type = TokenType::jar,
+                                      .line = lineCount,
+                                      .col = colCount});
                     buffer.clear();
                 } else if (buffer == "nahitar") {
-                    tokens.push_back({.type = TokenType::nahitar});
+                    tokens.push_back({.type = TokenType::nahitar,
+                                      .line = lineCount,
+                                      .col = colCount});
                     buffer.clear();
                 } else if (buffer == "anyatha") {
-                    tokens.push_back({.type = TokenType::anyatha});
+                    tokens.push_back({.type = TokenType::anyatha,
+                                      .line = lineCount,
+                                      .col = colCount});
                     buffer.clear();
                 } else {
-                    tokens.push_back({.type = TokenType::id, .value = buffer});
+                    tokens.push_back({.type = TokenType::id,
+                                      .line = lineCount,
+                                      .col = colCount,
+                                      .value = buffer});
                     buffer.clear();
                 }
             } else if (std::isdigit(peek().value())) {
@@ -81,7 +96,10 @@ class Tokenizer {
                 while (peek().has_value() && std::isdigit(peek().value())) {
                     buffer.push_back(consume());
                 }
-                tokens.push_back({.type = TokenType::ank, .value = buffer});
+                tokens.push_back({.type = TokenType::ank,
+                                  .line = lineCount,
+                                  .col = colCount,
+                                  .value = buffer});
                 buffer.clear();
             } else if (peek().value() == '/' && peek(1).has_value() &&
                        peek(1).value() == '/') {
@@ -105,39 +123,61 @@ class Tokenizer {
                 if (peek().has_value()) consume();
             } else if (peek().value() == '(') {
                 consume();
-                tokens.push_back({.type = TokenType::openParen});
+                tokens.push_back({.type = TokenType::openParen,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == ')') {
                 consume();
-                tokens.push_back({.type = TokenType::closeParen});
+                tokens.push_back({.type = TokenType::closeParen,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == ';') {
-                tokens.push_back({.type = TokenType::semi});
+                tokens.push_back({.type = TokenType::semi,
+                                  .line = lineCount,
+                                  .col = colCount});
                 consume();
             } else if (peek().value() == '=') {
                 consume();
-                tokens.push_back({.type = TokenType::eq});
+                tokens.push_back({.type = TokenType::eq,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == '+') {
                 consume();
-                tokens.push_back({.type = TokenType::plus});
+                tokens.push_back({.type = TokenType::plus,
+                                  .line = lineCount,
+                                  .col = colCount});
 
             } else if (peek().value() == '*') {
                 consume();
-                tokens.push_back({.type = TokenType::mul});
+                tokens.push_back({.type = TokenType::mul,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == '-') {
                 consume();
-                tokens.push_back({.type = TokenType::minus});
+                tokens.push_back({.type = TokenType::minus,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == '/') {
                 consume();
-                tokens.push_back({.type = TokenType::slash});
+                tokens.push_back({.type = TokenType::slash,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == '{') {
                 consume();
-                tokens.push_back({.type = TokenType::openCurly});
+                tokens.push_back({.type = TokenType::openCurly,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (peek().value() == '}') {
                 consume();
-                tokens.push_back({.type = TokenType::closeCurly});
+                tokens.push_back({.type = TokenType::closeCurly,
+                                  .line = lineCount,
+                                  .col = colCount});
             } else if (std::isspace(peek().value())) {
                 consume();
             } else {
-                std::cerr << "Unexpected character: " << peek().value() << "\n";
+                std::cerr << "Invalid Token " << peek().value()
+                          << " at line: " << lineCount << " & col: " << colCount
+                          << "\n";
                 exit(EXIT_FAILURE);
             }
         }
@@ -152,8 +192,16 @@ class Tokenizer {
     }
 
     inline char consume() {
+        if (_src.at(_idx) == '\n') {
+            lineCount++;
+            colCount = 0;
+        } else {
+            colCount++;
+        }
         return _src.at(_idx++);
     }
     const std::string _src;
     size_t _idx = 0;
+    int lineCount = 1;
+    int colCount = 0;
 };

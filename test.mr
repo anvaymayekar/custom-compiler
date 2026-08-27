@@ -1,4 +1,4 @@
-ank a = 10 / 2;
+nk a = 10 / 2;
 
 ank b = 4 + 6 * (3 - 2);
 ank c = 0;
@@ -11,10 +11,10 @@ shevti(b-a);
 */
 
 jar (0) {
-    shevti(1);
-} nahitar (0) {
-    shevti(2);
+    d = 1;
+} nahitar (1) {
+    d = 2;
 } anyatha {
-    d = d;
-    shevti(d);
+    d = 3;
 }
+shevti(d);

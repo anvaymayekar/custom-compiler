@@ -142,7 +142,7 @@ class Parser {
                 std::cerr << "Expected expression" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            tryConsume(TokenType::closeParen, "Expected ')'");
+            tryConsume(TokenType::closeParen, ')');
             auto termParen = _allocator.alloc<NodeTermParen>();
             termParen->expr = expr.value();
             auto term = _allocator.alloc<NodeTerm>();
@@ -228,12 +228,12 @@ class Parser {
         while (const auto stmt = parseStmt()) {
             scope->stmts.push_back(stmt.value());
         }
-        tryConsume(TokenType::closeCurly, "Expected '}'");
+        tryConsume(TokenType::closeCurly, '}');
         return scope;
     }
     std::optional<NodeJarPred *> parseJarPred() {
         if (tryConsume(TokenType::nahitar)) {
-            tryConsume(TokenType::openParen, "Expected '('");
+            tryConsume(TokenType::openParen, '(');
             auto nahitar = _allocator.alloc<NodeNahitar>();
             if (const auto expr = parseExpr()) {
                 nahitar->expr = expr.value();
@@ -241,7 +241,7 @@ class Parser {
                 std::cerr << "Expected expression" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            tryConsume(TokenType::closeParen, "Expected ')'");
+            tryConsume(TokenType::closeParen, ')');
             if (const auto scope = parseScope()) {
                 nahitar->scope = scope.value();
             } else {
@@ -285,8 +285,8 @@ class Parser {
                 exit(EXIT_FAILURE);
             }
 
-            tryConsume(TokenType::closeParen, "Expected ')'");
-            tryConsume(TokenType::semi, "Expected ';'");
+            tryConsume(TokenType::closeParen, ')');
+            tryConsume(TokenType::semi, ';');
 
             auto stmt = _allocator.alloc<NodeStmt>();
             stmt->var = stmtShevti;
@@ -318,7 +318,7 @@ class Parser {
                 exit(EXIT_FAILURE);
             }
 
-            tryConsume(TokenType::semi, "Expected ';'");
+            tryConsume(TokenType::semi, ';');
 
             auto stmt = _allocator.alloc<NodeStmt>();
             stmt->var = stmtAnk;
@@ -335,7 +335,7 @@ class Parser {
                 std::cerr << "Expected expression" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            tryConsume(TokenType::semi, "Expected ';'");
+            tryConsume(TokenType::semi, ';');
             auto stmt = _allocator.emplace<NodeStmt>(assign);
             return stmt;
         }
@@ -350,7 +350,7 @@ class Parser {
         }
         if (peek().has_value() && peek().value().type == TokenType::jar) {
             if (auto jar = tryConsume(TokenType::jar)) {
-                tryConsume(TokenType::openParen, "Expected '('");
+                tryConsume(TokenType::openParen, '(');
                 auto stmtJar = _allocator.alloc<NodeStmtJar>();
                 if (const auto expr = parseExpr()) {
                     stmtJar->expr = expr.value();
@@ -358,7 +358,7 @@ class Parser {
                     std::cerr << "Invalid expression\n";
                     exit(EXIT_FAILURE);
                 }
-                tryConsume(TokenType::closeParen, "Expected ')'");
+                tryConsume(TokenType::closeParen, ')');
                 if (auto scope = parseScope()) {
                     stmtJar->scope = scope.value();
                 } else {
@@ -439,16 +439,20 @@ class Parser {
         return _tokens.at(_idx + ahead);
     }
 
+    void error(const std::string &message, Token token) {
+    }
     inline Token consume(size_t count = 1) {
         Token token = _tokens.at(_idx);
         _idx += count;
         return token;
     }
-    inline Token tryConsume(TokenType type, const std::string errMsg) {
+    inline Token tryConsume(TokenType type, char c) {
         if (peek().has_value() && peek().value().type == type) {
             return consume();
         } else {
-            std::cerr << errMsg << std::endl;
+            std::cerr << "Expected: '" << c
+                      << "' at line: " << peek().value().line
+                      << " & col: " << peek().value().col << std::endl;
             exit(EXIT_FAILURE);
         }
     }

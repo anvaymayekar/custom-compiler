@@ -97,10 +97,15 @@ struct NodeStmtJar {
     NodeStmtScope *scope;
     std::optional<NodeJarPred *> pred;
 };
+
+struct NodeStmtAssign {
+    Token id;
+    NodeExpr *expr;
+};
 // Statement
 struct NodeStmt {
     std::variant<NodeStmtShevti *, NodeStmtAnk *, NodeStmtScope *,
-                 NodeStmtJar *>
+                 NodeStmtJar *, NodeStmtAssign *>
         var;
 };
 
@@ -317,6 +322,21 @@ class Parser {
 
             auto stmt = _allocator.alloc<NodeStmt>();
             stmt->var = stmtAnk;
+            return stmt;
+        }
+        if (peek().has_value() && peek().value().type == TokenType::id &&
+            peek(1).has_value() && peek(1).value().type == TokenType::eq) {
+            const auto assign = _allocator.alloc<NodeStmtAssign>();
+            assign->id = consume();
+            consume();
+            if (const auto expr = parseExpr()) {
+                assign->expr = expr.value();
+            } else {
+                std::cerr << "Expected expression" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            tryConsume(TokenType::semi, "Expected ';'");
+            auto stmt = _allocator.emplace<NodeStmt>(assign);
             return stmt;
         }
         if (peek().has_value() && peek().value().type == TokenType::openCurly) {

@@ -2,7 +2,7 @@ ank a = 10 / 2;
 
 ank b = 4 + 6 * (3 - 2);
 ank c = 0;
-ank d = 0;
+ank d = 30;
 // anvay
 /*
 anvay mayekar
@@ -12,8 +12,9 @@ shevti(b-a);
 
 jar (c) {
     shevti(1);
-} nahitar (d) {
+} nahitar (d - d) {
     shevti(2);
 } anyatha {
-    shevti(3);
+    d = d;
+    shevti(d);
 }

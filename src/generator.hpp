@@ -159,8 +159,27 @@ class Generator {
                                       .stackLoc = _gen._stackSize});
                 _gen.genExpr(stmtAnk->expr);
             }
+            void operator()(const NodeStmtAssign *stmtAssign) const {
+                auto it = std::find_if(_gen._vars.cbegin(), _gen._vars.cend(),
+                                       [&](const Var &var) {
+                                           return var.name ==
+                                                  stmtAssign->id.value.value();
+                                       });
+                if (it == _gen._vars.cend()) {
+                    std::cerr << "Undeclared Identifier: "
+                              << stmtAssign->id.value.value() << std::endl;
+                    exit(EXIT_FAILURE);
+                }
+                _gen.genExpr(stmtAssign->expr);
+                _gen.pop("rax");
+                _gen._output << "   mov [rsp + "
+                             << (_gen._stackSize - it->stackLoc - 1) * 8
+                             << "], rax\n";
+            }
             void operator()(const NodeStmtScope *scope) const {
+                _gen._output << "   ;; scope\n";
                 _gen.genScope(scope);
+                _gen._output << "   ;; /scope\n";
             }
             void operator()(const NodeStmtJar *stmtJar) const {
                 _gen.genExpr(stmtJar->expr);

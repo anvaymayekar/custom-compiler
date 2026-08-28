@@ -1,0 +1,313 @@
+{
+    "संख्येचा चल -> Number variable": {
+        "prefix": "ank",
+        "body": ["ank ${1:naav} = ${2:0};"],
+        "description": "संख्येसाठी चल तयार करा -> Declare an integer variable"
+    },
+
+    "लहान संख्या -> Small integer": {
+        "prefix": "lahan",
+        "body": ["he lahan ank ${1:naav} = ${2:0};"],
+        "description": "लहान आकाराचा संख्येचा चल -> Declare a small integer"
+    },
+
+    "मोठी संख्या -> Large integer": {
+        "prefix": "maha",
+        "body": ["he maha ank ${1:naav} = ${2:0};"],
+        "description": "मोठ्या आकाराचा संख्येचा चल -> Declare a large integer"
+    },
+
+    "उच्च संख्या -> Ultra integer": {
+        "prefix": "uch",
+        "body": ["he uch ank ${1:naav} = ${2:0};"],
+        "description": "अतिशय मोठ्या आकाराचा संख्येचा चल -> Declare an ultra-sized integer"
+    },
+
+    "स्थिर चल -> Immutable variable": {
+        "prefix": "ahe",
+        "body": ["he ${1:ank} ${2:naav} ahe ${3:0};"],
+        "description": "स्थिर किंवा अपरिवर्तनीय चल तयार करा -> Declare an immutable variable"
+    },
+
+    "खासगी चल -> Private variable": {
+        "prefix": "maze",
+        "body": ["he maze ${1:ank} ${2:naav} = ${3:0};"],
+        "description": "खासगी सदस्य तयार करा -> Declare a private member"
+    },
+
+    "स्थिर खासगी चल -> Static private variable": {
+        "prefix": "mazesthir",
+        "body": ["he maze sthir ${1:ank} ${2:naav} = ${3:0};"],
+        "description": "स्थिर खासगी सदस्य -> Declare a private static member"
+    },
+
+    "सर्व खासगी -> All private": {
+        "prefix": "sarve",
+        "body": ["sarve ${1:maha}"],
+        "description": "यानंतरचे सर्व सदस्य खासगी करा -> Make members private"
+    },
+
+    "जर -> If condition": {
+        "prefix": "jar",
+        "body": ["jar (${1:condition}) {", "\t$0", "}"],
+        "description": "अट खरी असल्यास हा भाग चालवा -> Execute this block if the condition is true"
+    },
+
+    "नाहीतर -> Else-if condition": {
+        "prefix": "nahitar",
+        "body": ["nahitar (${1:condition}) {", "\t$0", "}"],
+        "description": "मागील अट खोटी असल्यास दुसरी अट तपासा -> Check another condition"
+    },
+
+    "अन्यथा -> Else block": {
+        "prefix": "anyatha",
+        "body": ["anyatha {", "\t$0", "}"],
+        "description": "सर्व अटी खोट्या असल्यास हा भाग चालवा -> Execute the else block"
+    },
+
+    "जर-नाहीतर-अन्यथा -> If/else-if/else": {
+        "prefix": "jaranyatha",
+        "body": [
+            "jar (${1:condition}) {",
+            "\t$2",
+            "} nahitar (${3:other_condition}) {",
+            "\t$4",
+            "} anyatha {",
+            "\t$0",
+            "}"
+        ],
+        "description": "अटीनुसार वेगवेगळे भाग चालवा -> Full if / else-if / else chain"
+    },
+
+    "जोवर -> While loop": {
+        "prefix": "jovar",
+        "body": ["jovar (${1:condition}) {", "\t$0", "}"],
+        "description": "अट खरी असेपर्यंत पुनरावृत्ती करा -> Repeat while the condition is true"
+    },
+
+    "प्रत्येक -> For loop": {
+        "prefix": "pratyek",
+        "body": [
+            "pratyek (${1:initialization}; ${2:condition}; ${3:i++}) {",
+            "\t$0",
+            "}"
+        ],
+        "description": "ठराविक पद्धतीने पुनरावृत्ती करा -> Repeat using a for loop"
+    },
+
+    "थांबा -> Break": {
+        "prefix": "thamba",
+        "body": ["thamba;"],
+        "description": "लूप थांबवा -> Break out of the current loop"
+    },
+
+    "पुढे -> Continue": {
+        "prefix": "pudhe",
+        "body": ["pudhe;"],
+        "description": "पुढील पुनरावृत्तीकडे जा -> Continue to the next iteration"
+    },
+
+    "परतावा -> Return": {
+        "prefix": "partav",
+        "body": ["partav ${1:value};"],
+        "description": "कार्याचा परिणाम परत करा -> Return a value from a function"
+    },
+
+    "कार्य -> Function": {
+        "prefix": "karya",
+        "body": ["${1:ank} karya(${2:parameters}) {", "\t$0", "}"],
+        "description": "कार्य तयार करा -> Declare a function"
+    },
+
+    "निर्अंक -> Void function": {
+        "prefix": "nirank",
+        "body": ["nirank karya(${1:parameters}) {", "\t$0", "}"],
+        "description": "परिणाम न देणारे कार्य -> Declare a function that returns no value"
+    },
+
+    "छापा -> Print": {
+        "prefix": "leeh",
+        "body": ["leeh(${1:value});"],
+        "description": "मूल्य छापा -> Print a value"
+    },
+
+    "शेवटी -> Exit program": {
+        "prefix": "shevti",
+        "body": ["shevti(${1:value});"],
+        "description": "कार्यक्रमाची अंमलबजावणी समाप्त करा -> Terminate program execution"
+    },
+
+    "अंक -> Integer": {
+        "prefix": "type-ank",
+        "body": ["ank"],
+        "description": "पूर्णांक प्रकार -> Integer type"
+    },
+
+    "अक्षर -> Character or string": {
+        "prefix": "type-akshar",
+        "body": ["akshar"],
+        "description": "अक्षर किंवा मजकूर प्रकार -> Character/string type"
+    },
+
+    "भागांक -> Float": {
+        "prefix": "type-bhagank",
+        "body": ["bhagank"],
+        "description": "दशांश संख्या प्रकार -> Floating-point type"
+    },
+
+    "पूर्णांक -> Unsigned integer": {
+        "prefix": "type-purnank",
+        "body": ["purnank"],
+        "description": "अचिन्हांकित पूर्णांक प्रकार -> Unsigned integer type"
+    },
+
+    "विधान -> Boolean": {
+        "prefix": "type-vidhan",
+        "body": ["vidhan"],
+        "description": "खरे किंवा खोटे मूल्य धारण करणारा प्रकार -> Boolean type"
+    },
+
+    "खरे -> True": {
+        "prefix": "khare",
+        "body": ["khare"],
+        "description": "खरे boolean मूल्य -> True"
+    },
+
+    "खोटे -> False": {
+        "prefix": "khote",
+        "body": ["khote"],
+        "description": "खोटे boolean मूल्य -> False"
+    },
+
+    "अज्ञात -> Null/undefined": {
+        "prefix": "agyat",
+        "body": ["agyat"],
+        "description": "अज्ञात किंवा अनुपस्थित मूल्य -> Null/undefined value"
+    },
+
+    "आणि -> Logical AND": {
+        "prefix": "ani",
+        "body": ["ani"],
+        "description": "तार्किक AND -> Logical AND operator"
+    },
+
+    "वा -> Logical OR": {
+        "prefix": "va",
+        "body": ["va"],
+        "description": "तार्किक OR -> Logical OR operator"
+    },
+
+    "वर्ग -> Class": {
+        "prefix": "varg",
+        "body": ["varg ${1:Naav} {", "\t$0", "}"],
+        "description": "वर्ग तयार करा -> Declare a class"
+    },
+
+    "रचना -> Struct": {
+        "prefix": "rachna",
+        "body": ["rachna ${1:Naav} {", "\t$0", "}"],
+        "description": "रचना तयार करा -> Declare a struct"
+    },
+
+    "नवीन -> New": {
+        "prefix": "navin",
+        "body": ["navin ${1:Type}(${2:arguments})"],
+        "description": "नवीन वस्तू तयार करा -> Create a new object"
+    },
+
+    "विशेष -> Special/override": {
+        "prefix": "vishes",
+        "body": ["vishes ${1:karya}"],
+        "description": "विशेष किंवा override सदस्य -> Declare a special/overridden member"
+    },
+
+    "प्रकार -> Type": {
+        "prefix": "prakar",
+        "body": ["prakar(${1:value})"],
+        "description": "मूल्याचा प्रकार तपासा -> Inspect or obtain a value's type"
+    },
+
+    "आयात -> Import": {
+        "prefix": "ayat",
+        "body": ["ayat ${1:module};"],
+        "description": "बाह्य घटक आयात करा -> Import a module"
+    },
+
+    "पाहिजे -> Import": {
+        "prefix": "pahije",
+        "body": ["pahije ${1:module};"],
+        "description": "आवश्यक घटक आयात करा -> Import a required module"
+    },
+
+    "पर्याय -> Enum": {
+        "prefix": "paryay",
+        "body": ["paryay ${1:Naav} {", "\t${2:OPTION1},", "\t$0", "}"],
+        "description": "निश्चित पर्यायांची यादी तयार करा -> Declare an enum"
+    },
+
+    "प्रयत्न -> Try": {
+        "prefix": "prayatna",
+        "body": ["prayatna {", "\t$0", "}"],
+        "description": "संरक्षित पद्धतीने कोड चालवा -> Execute code that may produce an exception"
+    },
+
+    "अपवाद -> Catch": {
+        "prefix": "apvaad",
+        "body": ["apvaad (${1:error}) {", "\t$0", "}"],
+        "description": "अपवाद हाताळा -> Handle an exception"
+    },
+
+    "हे -> This": {
+        "prefix": "he",
+        "body": ["he"],
+        "description": "सध्याच्या वस्तूचा संदर्भ -> Refer to the current object"
+    },
+
+    "ते -> These": {
+        "prefix": "te",
+        "body": ["te"],
+        "description": "समूह किंवा संग्रहाचा संदर्भ -> Refer to a collection or group"
+    },
+
+    "स्थिर -> Static": {
+        "prefix": "sthir",
+        "body": ["sthir"],
+        "description": "स्थिर सदस्य किंवा घटक -> Declare a static member"
+    },
+
+    "लहान -> Small": {
+        "prefix": "lahan",
+        "body": ["lahan"],
+        "description": "लहान आकार निर्दिष्ट करा -> Specify the small size"
+    },
+
+    "महान -> Large": {
+        "prefix": "maha",
+        "body": ["maha"],
+        "description": "मोठा आकार निर्दिष्ट करा -> Specify the large size"
+    },
+
+    "उच्च -> Ultra": {
+        "prefix": "uch",
+        "body": ["uch"],
+        "description": "अतिशय मोठा आकार निर्दिष्ट करा -> Specify the ultra size"
+    },
+
+    "माझे -> Private": {
+        "prefix": "maze",
+        "body": ["maze"],
+        "description": "खासगी सदस्य निर्दिष्ट करा -> Make a member private"
+    },
+
+    "सर्वे -> All": {
+        "prefix": "sarve",
+        "body": ["sarve ${1:maha}"],
+        "description": "सर्व संबंधित सदस्यांसाठी modifier लागू करा -> Apply a modifier to all relevant members"
+    },
+
+    "स्थिर चल -> Const declaration": {
+        "prefix": "constvar",
+        "body": ["he ${1:ank} ${2:naav} ahe ${3:0};"],
+        "description": "अपरिवर्तनीय चल तयार करा -> Declare an immutable variable"
+    }
+}

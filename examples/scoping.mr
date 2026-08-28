@@ -1,0 +1,5 @@
+ank x = 5;
+{
+    ank x = 6;   // shadows the outer x
+    shevti(x);   // exits with 6
+}

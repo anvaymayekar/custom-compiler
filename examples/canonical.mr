@@ -1,0 +1,6 @@
+// The canonical regression-test program: expected exit code is 461 (mod 256 = 205)
+ank a = 10 + 90 * 5;
+
+ank b = 1;
+
+shevti(a + b);

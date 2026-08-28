@@ -1,0 +1,10 @@
+ank a = 0;
+ank b = 1;
+
+jar (a) {
+    shevti(1);
+} nahitar (b) {
+    shevti(7);
+} anyatha {
+    shevti(9);
+}

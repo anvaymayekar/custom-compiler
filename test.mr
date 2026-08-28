@@ -1,20 +1,6 @@
-nk a = 10 / 2;
-
-ank b = 4 + 6 * (3 - 2);
-ank c = 0;
-ank d = 30;
-// anvay
-/*
-anvay mayekar
-
-shevti(b-a);
-*/
-
-jar (0) {
-    d = 1;
-} nahitar (1) {
-    d = 2;
-} anyatha {
-    d = 3;
+ank karya jod(he ank y) {
+    partav y + 5;
 }
-shevti(d);
+he ank x = 5;
+x = 8;
+leeh(x);

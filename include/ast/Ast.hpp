@@ -165,7 +165,7 @@ struct NodeStmtPrint {  // leeh(expr);
 struct NodeStmtVarDecl {  // [modifiers] type name = expr;  (or `ahe` for
                           // immutable)
     std::string name;
-    NodeExpr *expr;
+    std::optional<NodeExpr *> expr;
     Modifiers modifiers;
     SourceLocation loc;
     SourceLocation nameLoc;

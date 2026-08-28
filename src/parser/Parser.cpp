@@ -471,29 +471,41 @@ std::optional<NodeStmt *> Parser::parseVarDeclTail(Modifiers modifiers,
     auto nameTok = expect(TokenType::Identifier);
     if (!nameTok.has_value()) { return std::nullopt; }
 
+    std::optional<NodeExpr *> expr;
     if (match(TokenType::KwAhe)) {
         modifiers.isImmutable = true;
-    } else if (!expect(TokenType::Equal).has_value()) {
-        return std::nullopt;
-    }
-
-    auto expr = parseExpr();
-    if (!expr.has_value()) {
+        auto e = parseExpr();
+        if (!e.has_value()) {
+            _diags.error(DiagCategory::Syntax, peek().loc,
+                         "expected an expression after 'ahe'");
+            return std::nullopt;
+        }
+        expr = e;
+    } else if (match(TokenType::Equal)) {
+        auto e = parseExpr();
+        if (!e.has_value()) {
+            _diags.error(DiagCategory::Syntax, peek().loc,
+                         "expected an expression in variable declaration");
+            return std::nullopt;
+        }
+        expr = e;
+    } else if (!check(TokenType::Semicolon)) {
         _diags.error(DiagCategory::Syntax, peek().loc,
-                     "expected an expression in variable declaration");
+                     "expected '=', 'ahe', or ';' after declaration name");
         return std::nullopt;
     }
+    // else: bare `;` — forward declaration, expr stays nullopt.
+
     if (!expect(TokenType::Semicolon).has_value()) { return std::nullopt; }
 
     auto *decl = _arena.emplace<NodeStmtVarDecl>();
     decl->name = nameTok->lexeme.value_or("");
-    decl->expr = expr.value();
+    decl->expr = expr;
     decl->modifiers = modifiers;
     decl->loc = start;
     decl->nameLoc = nameTok->loc;
     return _arena.emplace<NodeStmt>(NodeStmt{decl});
 }
-
 std::optional<NodeStmt *> Parser::parseFuncDeclTail(Modifiers modifiers,
                                                     SourceLocation start) {
     auto nameTok = expect(TokenType::Identifier);

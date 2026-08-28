@@ -131,7 +131,13 @@ void SemanticAnalyzer::visitStmt(const NodeStmt &stmt) {
             } else if constexpr (std::is_same_v<T, NodeStmtPrint>) {
                 visitExpr(*node->expr);
             } else if constexpr (std::is_same_v<T, NodeStmtVarDecl>) {
-                visitExpr(*node->expr);
+                if (node->modifiers.isImmutable && !node->expr.has_value()) {
+                    _diags.error(
+                        DiagCategory::Semantic, node->nameLoc,
+                        "'" + node->name +
+                            "' is declared 'ahe' but has no initializer");
+                }
+                if (node->expr.has_value()) { visitExpr(*node->expr.value()); }
                 declare(node->name, node->modifiers.isImmutable, node->nameLoc);
             } else if constexpr (std::is_same_v<T, NodeStmtScope>) {
                 visitScope(*node);

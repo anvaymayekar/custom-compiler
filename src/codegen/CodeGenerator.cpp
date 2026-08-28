@@ -396,16 +396,22 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                 _out << "    ; declare " << node->name
                      << (node->modifiers.isStatic ? " (sthir)" : "") << "\n";
                 if (node->modifiers.isStatic) {
-                    // Statics are initialized once, at first declaration,
-                    // into their .bss slot rather than the runtime stack.
                     declareVar(node->name, true);
-                    genExpr(*node->expr);
-                    pop("rax");
-                    const Var *v = findVar(node->name);
-                    _out << "    mov QWORD [" << v->staticLabel << "], rax\n";
+                    if (node->expr.has_value()) {
+                        genExpr(*node->expr.value());
+                        pop("rax");
+                        const Var *v = findVar(node->name);
+                        _out << "    mov QWORD [" << v->staticLabel
+                             << "], rax\n";
+                    }
+                    // else: .bss is zero-initialized already, nothing to emit.
                 } else {
                     declareVar(node->name, false);
-                    genExpr(*node->expr);
+                    if (node->expr.has_value()) {
+                        genExpr(*node->expr.value());
+                    } else {
+                        push("0", "uninitialized " + node->name);
+                    }
                 }
             } else if constexpr (std::is_same_v<T, NodeStmtAssign>) {
                 genCompoundAssign(*node);

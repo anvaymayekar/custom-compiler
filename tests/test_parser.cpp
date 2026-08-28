@@ -17,7 +17,7 @@ MT_TEST(multiplication_binds_tighter_than_addition) {
     mrtest::Pipeline p("ank a = 10 + 90 * 5;");
     MT_CHECK(!p.diags.hasErrors());
     auto *decl = std::get<NodeStmtVarDecl *>(p.program->stmts[0]->var);
-    auto *add = std::get<NodeBinExpr *>(decl->expr->var);
+    auto *add = std::get<NodeBinExpr *>(decl->expr.value()->var);
     MT_CHECK(add->op == BinaryOp::Add);
     // rhs of the top-level '+' must itself be the '*' subexpression.
     auto *rhsBin = std::get<NodeBinExpr *>(add->rhs->var);
@@ -28,14 +28,15 @@ MT_TEST(parentheses_override_precedence) {
     mrtest::Pipeline p("ank a = (10 + 90) * 5;");
     MT_CHECK(!p.diags.hasErrors());
     auto *decl = std::get<NodeStmtVarDecl *>(p.program->stmts[0]->var);
-    auto *mul = std::get<NodeBinExpr *>(decl->expr->var);
+    auto *mul = std::get<NodeBinExpr *>(decl->expr.value()->var);
     MT_CHECK(mul->op == BinaryOp::Mul);
 }
 
 MT_TEST(if_else_if_else_chain_parses) {
     mrtest::Pipeline p(
         "ank a = 1;\n"
-        "jar (a) { shevti(1); } nahitar (a) { shevti(2); } anyatha { shevti(3); }\n");
+        "jar (a) { shevti(1); } nahitar (a) { shevti(2); } anyatha { "
+        "shevti(3); }\n");
     MT_CHECK(!p.diags.hasErrors());
     MT_CHECK_EQ(p.program->stmts.size(), static_cast<size_t>(2));
 }

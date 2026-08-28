@@ -1,3 +1,9 @@
 pratyek (he ank x = 0; x < 5; x++) {
     leeh(x);
 }
+
+bhagank karya add(he bhagank x, he bhagank y){
+    partav x + y;
+}
+
+leeh(add(3.7, 4.3));

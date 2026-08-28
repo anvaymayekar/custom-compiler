@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -10,6 +11,22 @@
 
 namespace mr {
 
+// Emits Linux x86-64 NASM assembly for a semantically-valid program.
+// Evaluation model: every expression pushes its single result onto the
+// runtime stack; operators pop operands and push results back. Variables
+// live at a fixed offset from the current stack pointer (or, for `sthir`
+// statics, in a dedicated .bss slot). See docs/README.md "Codegen notes"
+// for the calling convention used for `karya` functions.
+//
+// Type handling: the backend tracks a coarse StorageKind (Int/Char/Str/
+// Float/Bool) per variable and per function signature (see
+// collectFunctionSignatures()) so it knows when a value needs converting
+// between the integer and SSE register classes - e.g. passing an `ank`
+// literal where a `bhagank` parameter is expected, or printing a
+// function's result with the right print_* routine. Every place a value
+// crosses a "declared kind" boundary (assignment, call argument, return)
+// goes through emitKindConversion() so mismatched int/float kinds don't
+// silently reinterpret each other's bit patterns.
 class CodeGenerator final {
    public:
     explicit CodeGenerator(NodeProgram program) : _program(std::move(program)) {
@@ -21,10 +38,17 @@ class CodeGenerator final {
     struct Var {
         std::string name;
         bool isStatic = false;
-        std::size_t stackLoc = 0;
-        std::string staticLabel;
+        std::size_t stackLoc = 0;  // valid when !isStatic
+        std::string staticLabel;   // valid when isStatic
         StorageKind kind = StorageKind::Int;
     };
+
+    struct FuncSig {
+        std::vector<StorageKind> paramKinds;
+        StorageKind returnKind = StorageKind::Int;
+    };
+
+    void collectFunctionSignatures();
 
     void genEntryPoint();
     void genFunctions();
@@ -44,6 +68,20 @@ class CodeGenerator final {
     void emitPrintCharRoutine();
     void emitPrintFloatRoutine();
 
+    // Infers the StorageKind an expression/term will evaluate to, using
+    // declared variable/function kinds - does not emit any code.
+    [[nodiscard]] StorageKind inferKind(const NodeTerm &term) const;
+    [[nodiscard]] StorageKind inferKind(const NodeExpr &expr) const;
+
+    // If `from` and `to` disagree about being StorageKind::Float, emits
+    // the int<->double conversion (cvtsi2sd / cvttsd2si) needed so the
+    // 64-bit value sitting in `gpReg` is reinterpreted correctly on the
+    // other side of the boundary. No-op when the kinds already agree, or
+    // when neither/both sides are float-incompatible kinds (Str is never
+    // auto-converted). Clobbers xmm0.
+    void emitKindConversion(const std::string &gpReg, StorageKind from,
+                            StorageKind to);
+
     void push(const std::string &reg, const std::string &comment = {});
     void pop(const std::string &reg, const std::string &comment = {});
     void beginScope();
@@ -52,30 +90,19 @@ class CodeGenerator final {
     [[nodiscard]] std::size_t stackOffsetOf(const std::string &name) const;
     [[nodiscard]] const Var *findVar(const std::string &name) const;
     void declareVar(const std::string &name, bool isStatic, StorageKind kind);
-
-    // Best-effort static type inference over an already-parsed expression,
-    // used only to pick codegen strategy (push width / SSE vs GP / which
-    // print_* routine) - not a real type checker and not wired into
-    // SemanticAnalyzer. Falls back to Int for anything ambiguous (e.g. a
-    // call, whose return kind we don't track), which preserves today's
-    // int-only behavior for everything that isn't explicitly float/char/str.
-    [[nodiscard]] StorageKind inferKind(const NodeExpr &expr) const;
-    [[nodiscard]] StorageKind inferKind(const NodeTerm &term) const;
-
-    // Registers a string literal in .rodata (length-prefixed: an 8-byte
-    // length followed by the raw bytes, no NUL terminator needed) and
-    // returns its label. Identical literals are not deduplicated - kept
-    // simple since programs are small.
     [[nodiscard]] std::string internString(const std::string &text);
 
     NodeProgram _program;
-    std::ostringstream _out;
+    std::ostringstream _out;         // _start + function bodies
     std::ostringstream _staticData;  // .bss slots for `sthir` variables
-    std::ostringstream _rodata;      // string literal storage
+    std::ostringstream _rodata;      // .rodata slots for string literals
     std::size_t _stackSize = 0;
     std::vector<Var> _vars;
     std::vector<std::size_t> _scopeMarks;
-    std::vector<std::pair<std::string, std::string>> _loopLabels;
+    std::vector<std::pair<std::string, std::string>>
+        _loopLabels;  // {continue, break}
+    std::unordered_map<std::string, FuncSig> _functionSigs;
+    StorageKind _currentFuncReturnKind = StorageKind::Int;
     int _labelCount = 0;
     int _staticCount = 0;
     int _stringCount = 0;

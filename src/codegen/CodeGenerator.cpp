@@ -77,6 +77,40 @@ void CodeGenerator::declareVar(const std::string &name, bool isStatic,
     }
 }
 
+void CodeGenerator::collectFunctionSignatures() {
+    for (const NodeStmt *stmt : _program.stmts) {
+        if (!std::holds_alternative<NodeStmtFuncDecl *>(stmt->var)) {
+            continue;
+        }
+        const NodeStmtFuncDecl *func = std::get<NodeStmtFuncDecl *>(stmt->var);
+        FuncSig sig;
+        sig.returnKind = resolveStorageKind(func->modifiers.type);
+        for (const NodeParam *param : func->params) {
+            sig.paramKinds.push_back(resolveStorageKind(param->modifiers.type));
+        }
+        _functionSigs[func->name] = std::move(sig);
+    }
+}
+
+void CodeGenerator::emitKindConversion(const std::string &gpReg,
+                                       StorageKind from, StorageKind to) {
+    if (from == to) { return; }
+    // Only Int/Char/Bool are treated as float-convertible; Str is a
+    // pointer and is never auto-converted to/from a float bit pattern.
+    auto isFloatConvertible = [](StorageKind k) {
+        return k == StorageKind::Int || k == StorageKind::Char ||
+               k == StorageKind::Bool;
+    };
+    if (to == StorageKind::Float && isFloatConvertible(from)) {
+        _out << "    cvtsi2sd xmm0, " << gpReg << "    ; int -> bhagank\n";
+        _out << "    movq " << gpReg << ", xmm0\n";
+    } else if (from == StorageKind::Float && isFloatConvertible(to)) {
+        _out << "    movq xmm0, " << gpReg << "\n";
+        _out << "    cvttsd2si " << gpReg
+             << ", xmm0    ; bhagank -> int (truncated)\n";
+    }
+}
+
 std::string CodeGenerator::internString(const std::string &text) {
     const std::string label = "str_" + std::to_string(_stringCount++);
     _rodata << "    " << label << ": dq " << text.size() << "\n";
@@ -112,10 +146,9 @@ StorageKind CodeGenerator::inferKind(const NodeTerm &term) const {
             } else if constexpr (std::is_same_v<T, NodeTermParen>) {
                 result = inferKind(*node->inner);
             } else if constexpr (std::is_same_v<T, NodeCallExpr>) {
-                // No return-type tracking on functions yet (Tier 2
-                // limitation) - assume Int, matching today's behavior for
-                // every function that returns via `partav <int-expr>`.
-                result = StorageKind::Int;
+                auto it = _functionSigs.find(node->callee);
+                result = (it != _functionSigs.end()) ? it->second.returnKind
+                                                     : StorageKind::Int;
             }
         },
         term.var);
@@ -217,10 +250,23 @@ void CodeGenerator::genTerm(const NodeTerm &term) {
 }
 
 void CodeGenerator::genCall(const NodeCallExpr &call) {
+    auto sigIt = _functionSigs.find(call.callee);
+    const bool haveSig = sigIt != _functionSigs.end();
+
     for (NodeExpr *arg : call.args) { genExpr(*arg); }
     for (std::size_t i = call.args.size(); i-- > 0;) {
         pop(kArgRegs[i],
             "arg " + std::to_string(i) + " for call to " + call.callee);
+        // Convert the argument's actual kind to match the callee's
+        // declared parameter kind, e.g. an `ank` literal passed where a
+        // `bhagank` parameter is expected - otherwise the callee would
+        // reinterpret the raw integer bits as if they were already an
+        // IEEE-754 double, producing garbage.
+        if (haveSig && i < sigIt->second.paramKinds.size()) {
+            const StorageKind argKind = inferKind(*call.args[i]);
+            emitKindConversion(kArgRegs[i], argKind,
+                               sigIt->second.paramKinds[i]);
+        }
     }
     _out << "    call func_" << call.callee << "\n";
     push("rax", "result of " + call.callee + "(...)");
@@ -485,24 +531,67 @@ void CodeGenerator::genIfChain(const NodeElseChain &chain,
 void CodeGenerator::genCompoundAssign(const NodeStmtAssign &assign) {
     const Var *v = findVar(assign.name);
     const bool isStatic = v != nullptr && v->isStatic;
+    const StorageKind targetKind = v != nullptr ? v->kind : StorageKind::Int;
+    const std::string loc =
+        isStatic
+            ? ("[" + v->staticLabel + "]")
+            : ("[rsp + " + std::to_string(stackOffsetOf(assign.name)) + "]");
+
     if (assign.op == CompoundOp::Assign) {
+        const StorageKind exprKind = inferKind(*assign.expr);
         genExpr(*assign.expr);
         pop("rax");
-        const std::string loc =
-            isStatic ? ("[" + v->staticLabel + "]")
-                     : ("[rsp + " + std::to_string(stackOffsetOf(assign.name)) +
-                        "]");
+        emitKindConversion("rax", exprKind, targetKind);
         _out << "    mov QWORD " << loc << ", rax    ; assign " << assign.name
              << "\n";
         return;
     }
 
+    const bool isArith = (assign.op == CompoundOp::AddAssign ||
+                          assign.op == CompoundOp::SubAssign ||
+                          assign.op == CompoundOp::MulAssign ||
+                          assign.op == CompoundOp::DivAssign);
+
+    if (targetKind == StorageKind::Float && isArith) {
+        // Route arithmetic compound-assignment through SSE when the
+        // variable is `bhagank`, converting the right-hand side to a
+        // double first if it isn't already one (e.g. `x += 2;`).
+        const StorageKind exprKind = inferKind(*assign.expr);
+        genExpr(*assign.expr);
+        pop("rbx");
+        emitKindConversion("rbx", exprKind, StorageKind::Float);
+        _out << "    mov rax, QWORD " << loc << "    ; load current "
+             << assign.name << "\n";
+        _out << "    movq xmm0, rax\n    movq xmm1, rbx\n";
+        switch (assign.op) {
+            case CompoundOp::AddAssign:
+                _out << "    addsd xmm0, xmm1\n";
+                break;
+            case CompoundOp::SubAssign:
+                _out << "    subsd xmm0, xmm1\n";
+                break;
+            case CompoundOp::MulAssign:
+                _out << "    mulsd xmm0, xmm1\n";
+                break;
+            case CompoundOp::DivAssign:
+                _out << "    divsd xmm0, xmm1\n";
+                break;
+            default:
+                break;
+        }
+        _out << "    movq rax, xmm0\n";
+        _out << "    mov QWORD " << loc << ", rax    ; store " << assign.name
+             << "\n";
+        return;
+    }
+
+    const StorageKind exprKind = inferKind(*assign.expr);
     genExpr(*assign.expr);
     pop("rbx");
-    const std::string loc =
-        isStatic
-            ? ("[" + v->staticLabel + "]")
-            : ("[rsp + " + std::to_string(stackOffsetOf(assign.name)) + "]");
+    // If the variable is int-like but the rhs happens to be a bhagank
+    // expression (e.g. `intVar += 2.5;`), truncate it rather than
+    // reinterpreting its bits as an integer.
+    emitKindConversion("rbx", exprKind, targetKind);
     _out << "    mov rax, QWORD " << loc << "    ; load current " << assign.name
          << "\n";
     switch (assign.op) {
@@ -578,8 +667,11 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                 if (node->modifiers.isStatic) {
                     declareVar(node->name, true, k);
                     if (node->expr.has_value()) {
+                        const StorageKind exprKind =
+                            inferKind(*node->expr.value());
                         genExpr(*node->expr.value());
                         pop("rax");
+                        emitKindConversion("rax", exprKind, k);
                         const Var *v = findVar(node->name);
                         _out << "    mov QWORD [" << v->staticLabel
                              << "], rax\n";
@@ -588,7 +680,19 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                 } else {
                     declareVar(node->name, false, k);
                     if (node->expr.has_value()) {
+                        const StorageKind exprKind =
+                            inferKind(*node->expr.value());
                         genExpr(*node->expr.value());
+                        if (exprKind != k) {
+                            // The initializer's value is already the new
+                            // variable's stack slot (no extra push needed
+                            // for the common case) - but converting it in
+                            // place means popping it, fixing it up, and
+                            // pushing it back.
+                            pop("rax");
+                            emitKindConversion("rax", exprKind, k);
+                            push("rax");
+                        }
                     } else {
                         push("0", "uninitialized " + node->name);
                     }
@@ -693,8 +797,10 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                 pop("rax", "discard switch scrutinee");
             } else if constexpr (std::is_same_v<T, NodeStmtReturn>) {
                 if (node->expr.has_value()) {
+                    const StorageKind exprKind = inferKind(*node->expr.value());
                     genExpr(*node->expr.value());
                     pop("rax");
+                    emitKindConversion("rax", exprKind, _currentFuncReturnKind);
                 }
                 _out << "    mov rsp, rbp\n    pop rbp\n    ret    ; partav\n";
             } else if constexpr (std::is_same_v<T, NodeStmtExprStmt>) {
@@ -711,9 +817,11 @@ void CodeGenerator::genFuncDecl(const NodeStmtFuncDecl &func) {
     const auto savedVars = _vars;
     const auto savedMarks = _scopeMarks;
     const auto savedStackSize = _stackSize;
+    const StorageKind savedReturnKind = _currentFuncReturnKind;
     _vars.clear();
     _scopeMarks.clear();
     _stackSize = 0;
+    _currentFuncReturnKind = resolveStorageKind(func.modifiers.type);
 
     _out << "func_" << func.name << ":\n";
     _out << "    push rbp\n    mov rbp, rsp\n";
@@ -734,6 +842,7 @@ void CodeGenerator::genFuncDecl(const NodeStmtFuncDecl &func) {
     _vars = savedVars;
     _scopeMarks = savedMarks;
     _stackSize = savedStackSize;
+    _currentFuncReturnKind = savedReturnKind;
 }
 
 void CodeGenerator::genFunctions() {
@@ -941,6 +1050,7 @@ void CodeGenerator::emitPrintFloatRoutine() {
 }
 
 std::string CodeGenerator::generate() {
+    collectFunctionSignatures();
     _out << "; Generated by the mr compiler - do not edit by hand.\n";
     _out << "global _start\n";
     _out << "section .text\n";

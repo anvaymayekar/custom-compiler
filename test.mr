@@ -1,8 +1,15 @@
-pratyek (he ank x = 0; x < 5; x++) {
-    leeh(x);
+// Jai Maharashtra
+
+te akshar naav ahe "Anvay";
+he ank vay = 20;
+
+nirank karya namaskar(te akshar kon) {
+    leeh("Namaskar ");
+    leeh(kon);
+    leeh("\n");
 }
 
-bhagank karya add(he bhagank x, he bhagank y){
-    partav x + y;
+jovar (vay > 0) {
+    namaskar(naav);
+    vay--;
 }
-leeh(add(3.7, 4.3));

@@ -922,11 +922,11 @@ void CodeGenerator::emitPrintStrRoutine() {
     _out << "    mov rax, 1\n";
     _out << "    mov rdi, 1\n";
     _out << "    syscall\n";
-    _out << "    mov rax, 1\n";
-    _out << "    mov rdi, 1\n";
-    _out << "    mov rsi, nl_byte\n";
-    _out << "    mov rdx, 1\n";
-    _out << "    syscall\n";
+    // _out << "    mov rax, 1\n";
+    // _out << "    mov rdi, 1\n";
+    // _out << "    mov rsi, nl_byte\n";
+    // _out << "    mov rdx, 1\n";
+    // _out << "    syscall\n";
     _out << "    ret\n\n";
 }
 
@@ -940,12 +940,12 @@ void CodeGenerator::emitPrintCharRoutine() {
     _out << "    mov rsi, rsp\n";
     _out << "    mov rdx, 1\n";
     _out << "    syscall\n";
-    _out << "    add rsp, 8\n";
-    _out << "    mov rax, 1\n";
-    _out << "    mov rdi, 1\n";
-    _out << "    mov rsi, nl_byte\n";
-    _out << "    mov rdx, 1\n";
-    _out << "    syscall\n";
+    // _out << "    add rsp, 8\n";
+    // _out << "    mov rax, 1\n";
+    // _out << "    mov rdi, 1\n";
+    // _out << "    mov rsi, nl_byte\n";
+    // _out << "    mov rdx, 1\n";
+    // _out << "    syscall\n";
     _out << "    ret\n\n";
 }
 

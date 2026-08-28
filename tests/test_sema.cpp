@@ -39,7 +39,7 @@ MT_TEST(self_referential_initializer_is_an_error) {
 MT_TEST(condition_and_branch_variables_are_checked_in_if_chain) {
     mrtest::Pipeline p(
         "ank a = 1;\n"
-        "jar (a) { shevti(a); } nahitar (b) { shevti(a); } anyatha { shevti(a); }\n");
-    // 'b' in the nahitar condition is never declared.
+        "jar (a) { shevti(a); } nahitar (b) { shevti(a); } anyatha { "
+        "shevti(a); }\n");
     MT_CHECK(p.diags.hasErrors());
 }

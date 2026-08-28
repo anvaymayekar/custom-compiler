@@ -40,17 +40,19 @@ inline void fail(const std::string &expr, const std::string &file, int line) {
 
 }  // namespace minitest
 
-#define MT_TEST(name)                                                             \
-    static void mt_test_##name();                                                 \
-    static ::minitest::Registrar mt_reg_##name(#name, &mt_test_##name);           \
+#define MT_TEST(name)                                                   \
+    static void mt_test_##name();                                       \
+    static ::minitest::Registrar mt_reg_##name(#name, &mt_test_##name); \
     static void mt_test_##name()
 
-#define MT_CHECK(cond)                                                            \
-    do {                                                                          \
-        if (!(cond)) { ::minitest::fail(#cond, __FILE__, __LINE__); }             \
+#define MT_CHECK(cond)                                                \
+    do {                                                              \
+        if (!(cond)) { ::minitest::fail(#cond, __FILE__, __LINE__); } \
     } while (0)
 
-#define MT_CHECK_EQ(a, b)                                                         \
-    do {                                                                          \
-        if (!((a) == (b))) { ::minitest::fail(#a " == " #b, __FILE__, __LINE__); } \
+#define MT_CHECK_EQ(a, b)                                       \
+    do {                                                        \
+        if (!((a) == (b))) {                                    \
+            ::minitest::fail(#a " == " #b, __FILE__, __LINE__); \
+        }                                                       \
     } while (0)

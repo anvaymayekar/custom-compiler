@@ -19,7 +19,6 @@ MT_TEST(multiplication_binds_tighter_than_addition) {
     auto *decl = std::get<NodeStmtVarDecl *>(p.program->stmts[0]->var);
     auto *add = std::get<NodeBinExpr *>(decl->expr.value()->var);
     MT_CHECK(add->op == BinaryOp::Add);
-    // rhs of the top-level '+' must itself be the '*' subexpression.
     auto *rhsBin = std::get<NodeBinExpr *>(add->rhs->var);
     MT_CHECK(rhsBin->op == BinaryOp::Mul);
 }
@@ -47,8 +46,6 @@ MT_TEST(missing_semicolon_is_a_syntax_error_not_a_crash) {
 }
 
 MT_TEST(multiple_independent_errors_are_all_reported) {
-    // Two unrelated broken statements; a naive parser that bails on the
-    // first error would only ever report one of these.
     mrtest::Pipeline p(
         "ank a = ;\n"
         "ank b = 1\n"
@@ -57,8 +54,6 @@ MT_TEST(multiple_independent_errors_are_all_reported) {
 }
 
 MT_TEST(unterminated_paren_does_not_throw_bad_optional_access) {
-    // Historically this shape of input crashed the compiler with
-    // std::bad_optional_access; it must now fail gracefully.
     mrtest::Pipeline p("ank a = (1 + 2;\n");
     MT_CHECK(p.diags.hasErrors());
 }

@@ -13,13 +13,12 @@
 
 namespace mrtest {
 
-inline std::vector<mr::Token> lex(const std::string &src, mr::DiagnosticEngine &diags) {
+inline std::vector<mr::Token> lex(const std::string &src,
+                                  mr::DiagnosticEngine &diags) {
     mr::Lexer lexer(src, "<test>", diags);
     return lexer.tokenize();
 }
 
-// Owns everything a parsed-and-analyzed program needs so tests can hold a
-// single object instead of juggling lifetimes.
 struct Pipeline {
     mr::DiagnosticEngine diags;
     mr::Arena arena;

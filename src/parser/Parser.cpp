@@ -245,6 +245,16 @@ std::optional<NodeTerm *> Parser::parseTerm() {
             NodeTermBoolLiteral{false, lit->loc});
         return _arena.emplace<NodeTerm>(NodeTerm{node});
     }
+    if (auto lit = match(TokenType::StringLiteral)) {
+        auto *node = _arena.emplace<NodeTermStringLiteral>(
+            NodeTermStringLiteral{lit->lexeme.value_or(""), lit->loc});
+        return _arena.emplace<NodeTerm>(NodeTerm{node});
+    }
+    if (auto lit = match(TokenType::CharLiteral)) {
+        auto *node = _arena.emplace<NodeTermCharLiteral>(NodeTermCharLiteral{
+            lit->lexeme.value_or(std::string(1, '\0')), lit->loc});
+        return _arena.emplace<NodeTerm>(NodeTerm{node});
+    }
     if (auto id = match(TokenType::Identifier)) {
         if (check(TokenType::OpenParen)) {
             auto args = parseArgList();
@@ -272,8 +282,6 @@ std::optional<NodeTerm *> Parser::parseTerm() {
 }
 
 std::optional<NodeExpr *> Parser::parsePostfix() {
-    // Postfix ++/-- only apply to a bare identifier, matching the
-    // language's "increment/decrement act on variables" semantics.
     if (check(TokenType::Identifier) &&
         (peek(1).type == TokenType::PlusPlus ||
          peek(1).type == TokenType::MinusMinus)) {
@@ -390,7 +398,6 @@ std::optional<NodeElseChain *> Parser::parseElseChain() {
         if (!expect(TokenType::CloseParen).has_value()) { return std::nullopt; }
         auto scope = parseScope();
         if (!scope.has_value()) { return std::nullopt; }
-
         auto *elseIf = _arena.emplace<NodeElseIf>();
         elseIf->expr = expr.value();
         elseIf->scope = scope.value();
@@ -412,7 +419,7 @@ Modifiers Parser::parseModifiers() {
     if (match(TokenType::KwTe)) {
         mods.type.isCollection = true;
     } else {
-        match(TokenType::KwHe);  // optional; also the implicit default
+        match(TokenType::KwHe);
     }
     if (match(TokenType::KwMaze)) { mods.isPrivate = true; }
     if (match(TokenType::KwSthir)) { mods.isStatic = true; }
@@ -424,7 +431,6 @@ Modifiers Parser::parseModifiers() {
     } else if (match(TokenType::KwUch)) {
         mods.type.size = SizeQualifier::Uch;
     }
-
     switch (peek().type) {
         case TokenType::KwAnk:
             mods.type.base = BaseType::Ank;
@@ -494,7 +500,7 @@ std::optional<NodeStmt *> Parser::parseVarDeclTail(Modifiers modifiers,
                      "expected '=', 'ahe', or ';' after declaration name");
         return std::nullopt;
     }
-    // else: bare `;` — forward declaration, expr stays nullopt.
+    // else: bare `;` -> forward declaration, expr stays nullopt.
 
     if (!expect(TokenType::Semicolon).has_value()) { return std::nullopt; }
 
@@ -506,12 +512,12 @@ std::optional<NodeStmt *> Parser::parseVarDeclTail(Modifiers modifiers,
     decl->nameLoc = nameTok->loc;
     return _arena.emplace<NodeStmt>(NodeStmt{decl});
 }
+
 std::optional<NodeStmt *> Parser::parseFuncDeclTail(Modifiers modifiers,
                                                     SourceLocation start) {
     auto nameTok = expect(TokenType::Identifier);
     if (!nameTok.has_value()) { return std::nullopt; }
     if (!expect(TokenType::OpenParen).has_value()) { return std::nullopt; }
-
     std::vector<NodeParam *> params;
     if (!check(TokenType::CloseParen)) {
         while (true) {
@@ -525,10 +531,8 @@ std::optional<NodeStmt *> Parser::parseFuncDeclTail(Modifiers modifiers,
         }
     }
     if (!expect(TokenType::CloseParen).has_value()) { return std::nullopt; }
-
     auto body = parseScope();
     if (!body.has_value()) { return std::nullopt; }
-
     auto *func = _arena.emplace<NodeStmtFuncDecl>();
     func->name = nameTok->lexeme.value_or("");
     func->params = std::move(params);
@@ -541,10 +545,7 @@ std::optional<NodeStmt *> Parser::parseFuncDeclTail(Modifiers modifiers,
 std::optional<NodeStmt *> Parser::parseDeclOrFunc() {
     const SourceLocation start = peek().loc;
     Modifiers mods = parseModifiers();
-    if (mods.type.base == BaseType::Inferred) {
-        return std::nullopt;
-    }  // parseModifiers already reported
-
+    if (mods.type.base == BaseType::Inferred) { return std::nullopt; }
     if (match(TokenType::KwKarya)) { return parseFuncDeclTail(mods, start); }
     return parseVarDeclTail(mods, start);
 }
@@ -593,7 +594,6 @@ std::optional<NodeStmt *> Parser::parseIfStmt() {
     if (!expect(TokenType::CloseParen).has_value()) { return std::nullopt; }
     auto scope = parseScope();
     if (!scope.has_value()) { return std::nullopt; }
-
     auto *ifStmt = _arena.emplace<NodeStmtIf>();
     ifStmt->expr = expr.value();
     ifStmt->scope = scope.value();
@@ -645,7 +645,6 @@ std::optional<NodeStmt *> Parser::parseAssignTail(Token nameTok) {
 
 std::optional<NodeStmt *> Parser::parseIdentifierLeadStmt() {
     Token nameTok = advance();
-
     if (check(TokenType::OpenParen)) {
         auto args = parseArgList();
         if (!expect(TokenType::Semicolon).has_value()) { return std::nullopt; }
@@ -657,7 +656,6 @@ std::optional<NodeStmt *> Parser::parseIdentifierLeadStmt() {
             NodeStmtExprStmt{expr, nameTok.loc});
         return _arena.emplace<NodeStmt>(NodeStmt{stmt});
     }
-
     if (check(TokenType::PlusPlus) || check(TokenType::MinusMinus)) {
         Token op = advance();
         if (!expect(TokenType::Semicolon).has_value()) { return std::nullopt; }
@@ -671,7 +669,6 @@ std::optional<NodeStmt *> Parser::parseIdentifierLeadStmt() {
             NodeStmtExprStmt{expr, nameTok.loc});
         return _arena.emplace<NodeStmt>(NodeStmt{stmt});
     }
-
     return parseAssignTail(nameTok);
 }
 
@@ -689,7 +686,6 @@ std::optional<NodeStmt *> Parser::parseForInit() {
 std::optional<NodeStmt *> Parser::parseForStep() {
     auto nameTok = expect(TokenType::Identifier);
     if (!nameTok.has_value()) { return std::nullopt; }
-
     if (check(TokenType::PlusPlus) || check(TokenType::MinusMinus)) {
         Token op = advance();
         const IncDecOp kind = (op.type == TokenType::PlusPlus)
@@ -702,7 +698,6 @@ std::optional<NodeStmt *> Parser::parseForStep() {
             NodeStmtExprStmt{expr, nameTok->loc});
         return _arena.emplace<NodeStmt>(NodeStmt{stmt});
     }
-
     if (!isCompoundAssignOp(peek().type)) {
         _diags.error(DiagCategory::Syntax, peek().loc,
                      "expected '++', '--', or an assignment in 'pratyek' step");
@@ -740,7 +735,6 @@ std::optional<NodeStmt *> Parser::parseForStmt() {
     if (!expect(TokenType::CloseParen).has_value()) { return std::nullopt; }
     auto scope = parseScope();
     if (!scope.has_value()) { return std::nullopt; }
-
     auto *node = _arena.emplace<NodeStmtFor>();
     node->init = init.value();
     node->cond = cond.value();
@@ -761,7 +755,6 @@ std::optional<NodeStmt *> Parser::parseSwitchStmt() {
     }
     if (!expect(TokenType::CloseParen).has_value()) { return std::nullopt; }
     if (!expect(TokenType::OpenCurly).has_value()) { return std::nullopt; }
-
     std::vector<NodeSwitchCase *> cases;
     while (!check(TokenType::CloseCurly) && !check(TokenType::EndOfFile)) {
         const SourceLocation caseLoc = peek().loc;
@@ -782,7 +775,6 @@ std::optional<NodeStmt *> Parser::parseSwitchStmt() {
             synchronize();
             continue;
         }
-
         std::vector<NodeStmt *> stmts;
         while (!check(TokenType::CloseCurly) && !check(TokenType::EndOfFile) &&
                !check(TokenType::KwAnyatha) &&
@@ -799,7 +791,6 @@ std::optional<NodeStmt *> Parser::parseSwitchStmt() {
             NodeSwitchCase{value, std::move(stmts), caseLoc}));
     }
     if (!expect(TokenType::CloseCurly).has_value()) { return std::nullopt; }
-
     auto *node = _arena.emplace<NodeStmtSwitch>(
         NodeStmtSwitch{expr.value(), std::move(cases), kw.loc});
     return _arena.emplace<NodeStmt>(NodeStmt{node});
@@ -826,7 +817,6 @@ std::optional<NodeStmt *> Parser::parseStmt() {
     if (isDeclModifierStart(peek().type) || isTypeKeyword(peek().type)) {
         return parseDeclOrFunc();
     }
-
     switch (peek().type) {
         case TokenType::KwShevti:
             return parseExitStmt();
@@ -876,14 +866,23 @@ std::optional<NodeStmt *> Parser::parseStmt() {
 
 std::optional<NodeProgram> Parser::parseProgram() {
     if (_tokens.empty()) { return std::nullopt; }
-
     NodeProgram program;
     while (!check(TokenType::EndOfFile)) {
+        const std::size_t before = _idx;
         auto stmt = parseStmt();
         if (stmt.has_value()) {
             program.stmts.push_back(stmt.value());
         } else {
             synchronize();
+            // synchronize() deliberately stops *without* consuming a
+            // CloseCurly, since a nested parseScope() call relies on that
+            // to see it and terminate its own loop. At top level there is
+            // no such terminator, so a stray '}' here (e.g. from a
+            // misparsed construct like a bare `karya` with no leading
+            // type) would otherwise leave the cursor stuck and this loop
+            // spinning forever, calling _diags.error() until memory is
+            // exhausted. Guarantee forward progress unconditionally.
+            if (_idx == before) { advance(); }
         }
     }
     return program;

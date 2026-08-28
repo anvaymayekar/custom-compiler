@@ -15,7 +15,8 @@ int main() {
             std::cout << "[ FAIL ] " << test.name << '\n';
         }
     }
-    std::cout << "\n" << ran << " test(s) run, " << minitest::failures
+    std::cout << "\n"
+              << ran << " test(s) run, " << minitest::failures
               << " failure(s).\n";
     return minitest::failures == 0 ? 0 : 1;
 }

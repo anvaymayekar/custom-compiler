@@ -1,9 +1,3 @@
-/* Jay Maharashtra */
-he vidhan v ahe khare;
-ank karya jod(he ank y) {
-    partav y + 5;
+pratyek (he ank x = 0; x < 5; x++) {
+    leeh(x);
 }
-he ank x;
-x = 5 + (-5 - 5) * 4 + 6 - 6 * 3 / 1;
-leeh(x);
-leeh(v);

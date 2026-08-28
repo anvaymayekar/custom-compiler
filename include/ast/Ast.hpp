@@ -7,27 +7,11 @@
 
 #include "support/SourceLocation.hpp"
 
-// AST layout
-// ----------
-// Every node owns a SourceLocation so diagnostics can point at the right
-// place in the source at any pipeline stage. Nodes are allocated out of an
-// Arena and referenced by raw pointer; the arena owns their lifetime.
-//
-// See docs/README.md for the Tier 1 / Tier 2 split: this AST supports
-// declarations (with full modifier chains), the full operator set,
-// if/nahitar/anyatha, while/for loops with break/continue, switch
-// (paryay), functions with return, and scopes. Structs/classes,
-// arrays/strings, and try/catch are Tier 2 and documented separately.
 namespace mr {
 
 struct NodeExpr;
 
 // ---- Types ----
-// A very small type system: a base keyword plus an optional size
-// qualifier. Real width/format differences (int8 vs int64, double vs
-// int64 bit pattern) are handled in codegen; sema uses this purely to
-// check declared-type vs. usage in the limited ways currently enforced
-// (e.g. function argument counts, return-type presence).
 enum class BaseType {
     Ank,
     Akshar,
@@ -46,15 +30,38 @@ struct TypeInfo {
     bool isCollection = false;  // `te` vs `he`
 };
 
-// Declaration modifiers shared by variables and functions.
 struct Modifiers {
-    bool isPrivate = false;  // maze
-    bool isStatic = false;   // sthir
-    bool isAll =
-        false;  // sarve (spec does not define semantics; accepted as a no-op)
+    bool isPrivate = false;    // maze
+    bool isStatic = false;     // sthir
+    bool isAll = false;        // sarve
     bool isImmutable = false;  // ahe
     TypeInfo type;
 };
+
+// Resolved storage kind for a declared variable or a literal - derived
+// once from a TypeInfo (base keyword x he/te) rather than re-derived ad
+// hoc at every use site. CodeGenerator uses this to pick push width,
+// arithmetic class (integer vs SSE), and print routine; SemanticAnalyzer
+// will grow real type-mismatch checks against it over time.
+enum class StorageKind { Int, Char, Str, Float, Bool, Inferred };
+
+[[nodiscard]] inline StorageKind resolveStorageKind(const TypeInfo &t) {
+    switch (t.base) {
+        case BaseType::Ank:
+            return StorageKind::Int;
+        case BaseType::Akshar:
+            // `te akshar` (collection of chars) is a string; `he akshar`
+            // (singular) is one character.
+            return t.isCollection ? StorageKind::Str : StorageKind::Char;
+        case BaseType::Bhagank:
+            return StorageKind::Float;
+        default:
+            // purnank/vidhan/nirank/agyat: reserved, not yet given real
+            // codegen semantics - treated as Int so declarations still
+            // compile rather than hard-failing.
+            return StorageKind::Int;
+    }
+}
 
 // ---- Expressions ----
 
@@ -68,8 +75,18 @@ struct NodeTermFloatLiteral {
     SourceLocation loc;
 };
 
-struct NodeTermBoolLiteral {  // khare / khote
+struct NodeTermBoolLiteral {
     bool value;
+    SourceLocation loc;
+};
+
+struct NodeTermStringLiteral {  // "..."
+    std::string text;           // already escape-processed by the lexer
+    SourceLocation loc;
+};
+
+struct NodeTermCharLiteral {  // '.'
+    std::string text;         // one (possibly escape-processed) byte
     SourceLocation loc;
 };
 
@@ -82,7 +99,7 @@ struct NodeTermParen {
     NodeExpr *inner;
 };
 
-struct NodeCallExpr {  // name(args...)
+struct NodeCallExpr {
     std::string callee;
     std::vector<NodeExpr *> args;
     SourceLocation loc;
@@ -90,7 +107,8 @@ struct NodeCallExpr {  // name(args...)
 
 struct NodeTerm {
     std::variant<NodeTermIntLiteral *, NodeTermFloatLiteral *,
-                 NodeTermBoolLiteral *, NodeTermIdentifier *, NodeTermParen *,
+                 NodeTermBoolLiteral *, NodeTermStringLiteral *,
+                 NodeTermCharLiteral *, NodeTermIdentifier *, NodeTermParen *,
                  NodeCallExpr *>
         var;
 };
@@ -152,20 +170,19 @@ struct NodeStmtScope {
     std::vector<NodeStmt *> stmts;
 };
 
-struct NodeStmtExit {  // shevti(expr);
+struct NodeStmtExit {
     NodeExpr *expr;
     SourceLocation loc;
 };
 
-struct NodeStmtPrint {  // leeh(expr);
+struct NodeStmtPrint {
     NodeExpr *expr;
     SourceLocation loc;
 };
 
-struct NodeStmtVarDecl {  // [modifiers] type name = expr;  (or `ahe` for
-                          // immutable)
+struct NodeStmtVarDecl {
     std::string name;
-    std::optional<NodeExpr *> expr;
+    std::optional<NodeExpr *> expr;  // nullopt = forward declaration
     Modifiers modifiers;
     SourceLocation loc;
     SourceLocation nameLoc;
@@ -185,7 +202,7 @@ enum class CompoundOp {
     ShrAssign
 };
 
-struct NodeStmtAssign {  // name (op)= expr;
+struct NodeStmtAssign {
     std::string name;
     CompoundOp op;
     NodeExpr *expr;
@@ -217,16 +234,16 @@ struct NodeStmtIf {
     SourceLocation loc;
 };
 
-struct NodeStmtWhile {  // jovar (expr) { ... }
+struct NodeStmtWhile {
     NodeExpr *expr;
     NodeStmtScope *scope;
     SourceLocation loc;
 };
 
-struct NodeStmtFor {  // pratyek init; cond; step { ... }
-    NodeStmt *init;  // NodeStmtVarDecl* or NodeStmtAssign*, wrapped in NodeStmt
+struct NodeStmtFor {
+    NodeStmt *init;
     NodeExpr *cond;
-    NodeStmt *step;  // NodeStmtAssign* (incl. ++/--), wrapped in NodeStmt
+    NodeStmt *step;
     NodeStmtScope *scope;
     SourceLocation loc;
 };
@@ -239,13 +256,12 @@ struct NodeStmtContinue {
 };
 
 struct NodeSwitchCase {
-    std::optional<NodeExpr *>
-        value;  // nullopt for the `anyatha` (default) case
+    std::optional<NodeExpr *> value;
     std::vector<NodeStmt *> stmts;
     SourceLocation loc;
 };
 
-struct NodeStmtSwitch {  // paryay (expr) { 1: ...; anyatha: ...; }
+struct NodeStmtSwitch {
     NodeExpr *expr;
     std::vector<NodeSwitchCase *> cases;
     SourceLocation loc;
@@ -257,20 +273,20 @@ struct NodeParam {
     SourceLocation loc;
 };
 
-struct NodeStmtFuncDecl {  // [modifiers] returnType karya name(params) { ... }
+struct NodeStmtFuncDecl {
     std::string name;
     std::vector<NodeParam *> params;
-    Modifiers modifiers;  // modifiers.type is the return type
+    Modifiers modifiers;
     NodeStmtScope *body;
     SourceLocation loc;
 };
 
-struct NodeStmtReturn {  // partav [expr];
+struct NodeStmtReturn {
     std::optional<NodeExpr *> expr;
     SourceLocation loc;
 };
 
-struct NodeStmtExprStmt {  // a bare call used as a statement: foo();
+struct NodeStmtExprStmt {
     NodeExpr *expr;
     SourceLocation loc;
 };

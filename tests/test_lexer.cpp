@@ -12,9 +12,9 @@ MT_TEST(lexes_numbers_identifiers_and_keywords) {
     for (const auto &t : tokens) { types.push_back(t.type); }
 
     const std::vector<TokenType> expected = {
-        TokenType::KwAnk,   TokenType::Identifier, TokenType::Equal,
-        TokenType::IntLiteral, TokenType::Plus,    TokenType::IntLiteral,
-        TokenType::Star,    TokenType::IntLiteral, TokenType::Semicolon,
+        TokenType::KwAnk,      TokenType::Identifier, TokenType::Equal,
+        TokenType::IntLiteral, TokenType::Plus,       TokenType::IntLiteral,
+        TokenType::Star,       TokenType::IntLiteral, TokenType::Semicolon,
         TokenType::EndOfFile,
     };
     MT_CHECK_EQ(types.size(), expected.size());
@@ -30,7 +30,6 @@ MT_TEST(reserved_keywords_tokenize_distinctly_from_identifiers) {
     MT_CHECK(tokens[0].type == TokenType::KwKarya);
     MT_CHECK(tokens[1].type == TokenType::KwLeeh);
     MT_CHECK(tokens[2].type == TokenType::KwVarg);
-    // "karyaX" must NOT be tokenized as the keyword "karya" + "X".
     MT_CHECK(tokens[3].type == TokenType::Identifier);
     MT_CHECK_EQ(tokens[3].lexeme.value_or(""), std::string("karyaX"));
 }
@@ -46,16 +45,16 @@ MT_TEST(invalid_character_reports_lexical_error_and_recovers) {
     mr::DiagnosticEngine diags;
     auto tokens = mrtest::lex("ank a = 1 @ 2;", diags);
     MT_CHECK(diags.hasErrors());
-    // Lexing should still continue past the bad character.
     bool sawSemicolon = false;
-    for (const auto &t : tokens) { sawSemicolon |= (t.type == TokenType::Semicolon); }
+    for (const auto &t : tokens) {
+        sawSemicolon |= (t.type == TokenType::Semicolon);
+    }
     MT_CHECK(sawSemicolon);
 }
 
 MT_TEST(source_locations_track_line_and_column) {
     mr::DiagnosticEngine diags;
     auto tokens = mrtest::lex("ank a = 1;\nank b = 2;", diags);
-    // 'b' is on line 2.
     bool found = false;
     for (const auto &t : tokens) {
         if (t.type == TokenType::Identifier && t.lexeme == "b") {

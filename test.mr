@@ -1,7 +1,22 @@
 // Jai Maharashtra
 
 te akshar naav ahe "Anvay";
-he maha ank vay ahe 20;
-he purnank x ahe 4;
-leeh(x);
-leeh("anvay");
+te akshar shreni ahe "A";
+
+he bhagank takke = 89.5;
+he vidhan pass = khare;
+he ank gun = 0;
+
+he maze nirank karya parinam() {
+    jovar (gun < 5) {
+        gun++;
+    }
+
+    jar (pass ani takke >= 40) {
+        leeh(naav + " Pass: " + shreni);
+    } anyatha {
+        leeh("Fail");
+    }
+}
+
+parinam();

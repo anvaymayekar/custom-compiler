@@ -105,11 +105,16 @@ struct NodeCallExpr {
     SourceLocation loc;
 };
 
+struct NodeTermTypeOf {  // prakar(expr) - compile-time "what type is this".
+    NodeExpr *operand;   // NOT evaluated at runtime, only kind-inspected.
+    SourceLocation loc;
+};
+
 struct NodeTerm {
     std::variant<NodeTermIntLiteral *, NodeTermFloatLiteral *,
                  NodeTermBoolLiteral *, NodeTermStringLiteral *,
                  NodeTermCharLiteral *, NodeTermIdentifier *, NodeTermParen *,
-                 NodeCallExpr *>
+                 NodeCallExpr *, NodeTermTypeOf *>
         var;
 };
 

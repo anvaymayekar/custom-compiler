@@ -27,6 +27,15 @@ namespace mr {
 // crosses a "declared kind" boundary (assignment, call argument, return)
 // goes through emitKindConversion() so mismatched int/float kinds don't
 // silently reinterpret each other's bit patterns.
+//
+// Scoping: every top-level declaration (outside any `karya` body) is
+// given real global (.bss) storage, regardless of whether `sthir` was
+// written - there's no other coherent meaning for "global" when each
+// function is generated as its own isolated stack frame (genFuncDecl()
+// clears _vars per function), so a non-static top-level variable would
+// otherwise be a dangling reference to a frame the function can't
+// address. These are tracked separately in _globals so they survive that
+// per-function _vars reset; see the `_inFunction` flag and findVar().
 class CodeGenerator final {
    public:
     explicit CodeGenerator(NodeProgram program) : _program(std::move(program)) {
@@ -68,6 +77,8 @@ class CodeGenerator final {
     void emitPrintCharRoutine();
     void emitPrintFloatRoutine();
     void emitStrConcatRoutine();
+    void emitCharToStrRoutine();
+    void emitIntToStrRoutine();
 
     // Infers the StorageKind an expression/term will evaluate to, using
     // declared variable/function kinds - does not emit any code.
@@ -99,6 +110,11 @@ class CodeGenerator final {
     std::ostringstream _rodata;      // .rodata slots for string literals
     std::size_t _stackSize = 0;
     std::vector<Var> _vars;
+    // Top-level (global) declarations, tracked separately from _vars so
+    // they remain resolvable from inside a function body even though
+    // genFuncDecl() clears _vars per function - see the class comment.
+    std::vector<Var> _globals;
+    bool _inFunction = false;
     std::vector<std::size_t> _scopeMarks;
     std::vector<std::pair<std::string, std::string>>
         _loopLabels;  // {continue, break}

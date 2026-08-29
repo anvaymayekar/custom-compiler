@@ -53,7 +53,14 @@ const CodeGenerator::Var *CodeGenerator::findVar(
     const std::string &name) const {
     auto it = std::find_if(_vars.crbegin(), _vars.crend(),
                            [&](const Var &v) { return v.name == name; });
-    return it == _vars.crend() ? nullptr : &(*it);
+    if (it != _vars.crend()) { return &(*it); }
+    // Fall back to top-level globals - see the CodeGenerator class
+    // comment. Not reached for a name that also exists in _vars (a local
+    // or parameter correctly shadows a same-named global, matching
+    // SemanticAnalyzer's innermost-scope-first lookup).
+    auto git = std::find_if(_globals.crbegin(), _globals.crend(),
+                            [&](const Var &v) { return v.name == name; });
+    return git != _globals.crend() ? &(*git) : nullptr;
 }
 
 std::size_t CodeGenerator::stackOffsetOf(const std::string &name) const {
@@ -149,6 +156,10 @@ StorageKind CodeGenerator::inferKind(const NodeTerm &term) const {
                 auto it = _functionSigs.find(node->callee);
                 result = (it != _functionSigs.end()) ? it->second.returnKind
                                                      : StorageKind::Int;
+            } else if constexpr (std::is_same_v<T, NodeTermTypeOf>) {
+                // prakar(...) always evaluates to a printable type-name
+                // string.
+                result = StorageKind::Str;
             }
         },
         term.var);
@@ -168,10 +179,10 @@ StorageKind CodeGenerator::inferKind(const NodeExpr &expr) const {
                         const StorageKind lk = inferKind(*node->lhs);
                         const StorageKind rk = inferKind(*node->rhs);
                         if (lk == StorageKind::Str || rk == StorageKind::Str) {
-                            // String concatenation - see genBinExpr(). Only
-                            // reached with a well-formed Str+Str pair
-                            // because SemanticAnalyzer rejects mixing a
-                            // string with a non-string operand.
+                            // String concatenation - see genBinExpr(). May
+                            // mix Str with Char/Int/Bool (converted at
+                            // runtime); SemanticAnalyzer rejects anything
+                            // else (e.g. Str + Float).
                             result = StorageKind::Str;
                         } else if (lk == StorageKind::Float ||
                                    rk == StorageKind::Float) {
@@ -260,6 +271,37 @@ void CodeGenerator::genTerm(const NodeTerm &term) {
                 genExpr(*node->inner);
             } else if constexpr (std::is_same_v<T, NodeCallExpr>) {
                 genCall(*node);
+            } else if constexpr (std::is_same_v<T, NodeTermTypeOf>) {
+                // prakar(expr): purely a compile-time query over the
+                // operand's inferred StorageKind - the operand itself is
+                // NOT evaluated at runtime (matching e.g. C++ typeid's
+                // treatment of a non-polymorphic operand), so a call with
+                // side effects inside prakar(...) will not execute them.
+                const StorageKind k = inferKind(*node->operand);
+                std::string typeName;
+                switch (k) {
+                    case StorageKind::Int:
+                        typeName = "ank";
+                        break;
+                    case StorageKind::Float:
+                        typeName = "bhagank";
+                        break;
+                    case StorageKind::Char:
+                        typeName = "akshar";
+                        break;
+                    case StorageKind::Str:
+                        typeName = "akshar (te)";
+                        break;
+                    case StorageKind::Bool:
+                        typeName = "khare/khote";
+                        break;
+                    default:
+                        typeName = "agyat";
+                        break;
+                }
+                const std::string label = internString(typeName);
+                _out << "    mov rax, " << label << "    ; prakar(...)\n";
+                push("rax");
             }
         },
         term.var);
@@ -378,13 +420,35 @@ void CodeGenerator::genBinExpr(const NodeBinExpr &bin) {
 
     if (bin.op == BinaryOp::Add &&
         (lk == StorageKind::Str || rk == StorageKind::Str)) {
-        // String concatenation. SemanticAnalyzer rejects a string mixed
-        // with a non-string operand, so by the time codegen sees this,
-        // both sides are guaranteed Str.
+        // String concatenation. Either side may be a non-Str value (a
+        // char or an int/bool), in which case it's first converted to a
+        // fresh length-prefixed string on the runtime str_heap via
+        // char_to_str/int_to_str before both sides go to str_concat.
+        // SemanticAnalyzer rejects anything else mixed with a string
+        // (e.g. Str + bhagank), so only those kinds reach here.
         genExpr(*bin.rhs);
         genExpr(*bin.lhs);
-        pop("rdi", "lhs string");
-        pop("rsi", "rhs string");
+        pop("rax", "lhs value");
+        pop("rbx", "rhs value");
+        // char_to_str/int_to_str preserve rbx (and r12-r15) internally,
+        // so it's safe to hold the still-unconverted rhs value in rbx
+        // across the lhs conversion call below, and vice versa.
+        if (lk != StorageKind::Str) {
+            _out << "    mov rdi, rax\n";
+            _out << "    call "
+                 << (lk == StorageKind::Char ? "char_to_str" : "int_to_str")
+                 << "    ; convert lhs for string concatenation\n";
+            _out << "    mov rax, rax\n";
+        }
+        if (rk != StorageKind::Str) {
+            _out << "    mov rdi, rbx\n";
+            _out << "    call "
+                 << (rk == StorageKind::Char ? "char_to_str" : "int_to_str")
+                 << "    ; convert rhs for string concatenation\n";
+            _out << "    mov rbx, rax\n";
+        }
+        _out << "    mov rdi, rax\n";
+        _out << "    mov rsi, rbx\n";
         _out << "    call str_concat\n";
         push("rax", "concatenated string");
         return;
@@ -692,11 +756,31 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                         break;
                 }
             } else if constexpr (std::is_same_v<T, NodeStmtVarDecl>) {
+                // Every declaration outside a function body is a real
+                // global (see the CodeGenerator class comment), regardless
+                // of whether `sthir` was written.
+                const bool storeAsStatic =
+                    node->modifiers.isStatic || !_inFunction;
                 _out << "    ; declare " << node->name
-                     << (node->modifiers.isStatic ? " (sthir)" : "") << "\n";
+                     << (node->modifiers.isStatic
+                             ? " (sthir)"
+                             : (!_inFunction ? " (global)" : ""))
+                     << "\n";
                 const StorageKind k = resolveStorageKind(node->modifiers.type);
-                if (node->modifiers.isStatic) {
-                    declareVar(node->name, true, k);
+                declareVar(node->name, storeAsStatic, k);
+                if (!_inFunction) {
+                    // Keep a persistent lookup entry that survives
+                    // genFuncDecl()'s per-function `_vars.clear()`, so a
+                    // function body can still resolve this name. A
+                    // `sthir` declared *inside* a function is
+                    // intentionally NOT mirrored here - it keeps the same
+                    // persistent .bss storage, but the name itself stays
+                    // local to that one function (matching "static
+                    // local" semantics), since `_inFunction` is true at
+                    // that declaration site.
+                    _globals.push_back(*findVar(node->name));
+                }
+                if (storeAsStatic) {
                     if (node->expr.has_value()) {
                         const StorageKind exprKind =
                             inferKind(*node->expr.value());
@@ -709,7 +793,6 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                     }
                     // else: .bss is zero-initialized already.
                 } else {
-                    declareVar(node->name, false, k);
                     if (node->expr.has_value()) {
                         const StorageKind exprKind =
                             inferKind(*node->expr.value());
@@ -853,6 +936,7 @@ void CodeGenerator::genFuncDecl(const NodeStmtFuncDecl &func) {
     _scopeMarks.clear();
     _stackSize = 0;
     _currentFuncReturnKind = resolveStorageKind(func.modifiers.type);
+    _inFunction = true;
 
     _out << "func_" << func.name << ":\n";
     _out << "    push rbp\n    mov rbp, rsp\n";
@@ -870,6 +954,7 @@ void CodeGenerator::genFuncDecl(const NodeStmtFuncDecl &func) {
     endScope();
     _out << "    mov rsp, rbp\n    pop rbp\n    ret\n\n";
 
+    _inFunction = false;
     _vars = savedVars;
     _scopeMarks = savedMarks;
     _stackSize = savedStackSize;
@@ -1050,9 +1135,6 @@ void CodeGenerator::emitPrintFloatRoutine() {
     _out << ".pf_copy_int_done:\n";
     _out << "    mov byte [r12], '.'\n";
     _out << "    inc r12\n";
-    // Unrolled fixed-6-digit fractional print (MSB first), avoiding a
-    // shrinking-divisor loop (and its bug surface) in favor of six
-    // explicit divisions by known constants.
     for (const char *divisor : {"100000", "10000", "1000", "100", "10"}) {
         _out << "    mov rax, r13\n";
         _out << "    xor rdx, rdx\n";
@@ -1125,6 +1207,79 @@ void CodeGenerator::emitStrConcatRoutine() {
     _out << "    ret\n\n";
 }
 
+void CodeGenerator::emitCharToStrRoutine() {
+    _out << "; char_to_str: allocates a fresh 1-byte length-prefixed string\n";
+    _out << "; on str_heap holding the single byte in the low 8 bits of rdi,\n";
+    _out << "; and returns a pointer to it in rax. Does not touch rbx or\n";
+    _out << "; r12-r15, so a caller may hold a pending value in one of those\n";
+    _out << "; across this call (see genBinExpr's string-concat handling).\n";
+    _out << "char_to_str:\n";
+    _out << "    mov rax, [str_heap_offset]\n";
+    _out << "    lea rdx, [str_heap + rax]\n";
+    _out << "    mov qword [rdx], 1\n";
+    _out << "    mov [rdx + 8], dil\n";
+    _out << "    add rax, 16\n";
+    _out << "    mov [str_heap_offset], rax\n";
+    _out << "    mov rax, rdx\n";
+    _out << "    ret\n\n";
+}
+
+void CodeGenerator::emitIntToStrRoutine() {
+    _out << "; int_to_str: allocates a fresh length-prefixed decimal string\n";
+    _out << "; on str_heap representing the signed 64-bit value in rdi, and\n";
+    _out << "; returns a pointer to it in rax. Preserves rbx (uses r12/r13\n";
+    _out << "; internally but saves/restores them), so a caller may hold a\n";
+    _out << "; pending value in rbx across this call.\n";
+    _out << "int_to_str:\n";
+    _out << "    push rbp\n";
+    _out << "    mov rbp, rsp\n";
+    _out << "    sub rsp, 32\n";
+    _out << "    push r12\n";
+    _out << "    push r13\n";
+    _out << "    mov rax, rdi\n";
+    _out << "    xor r8, r8\n";
+    _out << "    cmp rax, 0\n";
+    _out << "    jge .its_conv\n";
+    _out << "    mov r8, 1\n";
+    _out << "    neg rax\n";
+    _out << ".its_conv:\n";
+    _out << "    mov r9, 10\n";
+    _out << "    xor r12, r12\n";
+    _out << "    lea r13, [rbp - 1]\n";
+    _out << ".its_digit_loop:\n";
+    _out << "    xor rdx, rdx\n";
+    _out << "    div r9\n";
+    _out << "    add dl, '0'\n";
+    _out << "    dec r13\n";
+    _out << "    mov [r13], dl\n";
+    _out << "    inc r12\n";
+    _out << "    test rax, rax\n";
+    _out << "    jnz .its_digit_loop\n";
+    _out << "    cmp r8, 0\n";
+    _out << "    je .its_no_sign\n";
+    _out << "    dec r13\n";
+    _out << "    mov byte [r13], '-'\n";
+    _out << "    inc r12\n";
+    _out << ".its_no_sign:\n";
+    _out << "    mov rax, [str_heap_offset]\n";
+    _out << "    lea r10, [str_heap + rax]\n";
+    _out << "    mov [r10], r12\n";
+    _out << "    lea rdi, [r10 + 8]\n";
+    _out << "    mov rsi, r13\n";
+    _out << "    mov rcx, r12\n";
+    _out << "    rep movsb\n";
+    _out << "    lea rax, [r12 + 8 + 7]\n";
+    _out << "    and rax, -8\n";
+    _out << "    add rax, [str_heap_offset]\n";
+    _out << "    mov [str_heap_offset], rax\n";
+    _out << "    mov rax, r10\n";
+    _out << "    pop r13\n";
+    _out << "    pop r12\n";
+    _out << "    mov rsp, rbp\n";
+    _out << "    pop rbp\n";
+    _out << "    ret\n\n";
+}
+
 std::string CodeGenerator::generate() {
     collectFunctionSignatures();
     _out << "default abs    ; silences NASM's implicit-default-ABS deprecation "
@@ -1139,6 +1294,8 @@ std::string CodeGenerator::generate() {
     emitPrintCharRoutine();
     emitPrintFloatRoutine();
     emitStrConcatRoutine();
+    emitCharToStrRoutine();
+    emitIntToStrRoutine();
 
     _out << "\nsection .rodata\n";
     _out << "    nl_byte: db 10\n";

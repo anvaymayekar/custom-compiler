@@ -1,0 +1,27 @@
+// Anvay Mayekar
+
+he ank number ahe 97; // ank -> int | ahe -> const
+
+he maze vidhan karya isPrime(he ank number) { // maze -> private | karya -> func
+    he ank divisor = 2; // = -> mutable | he for singular data types;
+
+    jovar (divisor < number){
+        jar (number & divisor == 0) { // if
+            partav khote; // false
+        }
+        divisor++;
+    } // jovar -> while
+    // vidhan -> boolean
+    partav khare; // true
+}
+
+he vidhan prime = isPrime(number);
+
+jar (prime){
+    leeh("Prime athva abhajya ank ahe");
+} anyatha {
+    // else block
+    leeh("Not a Prime, Abhajya ank nahi");
+} // leeh -> print
+
+// Marathi .mr for computers

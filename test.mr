@@ -1,22 +1,35 @@
 // Jai Maharashtra
 
-te akshar naav ahe "Anvay";
-te akshar shreni ahe "A";
+te akshar name ahe "Newton's Cooling";        // ahe    -> immutable
 
-he bhagank takke = 89.5;
-he vidhan pass = khare;
-he ank gun = 0;
+he bhagank roomTemp ahe 25.0;                 // bhagank -> float
+he bhagank temperature = 90.0;                // =      -> mutable
+he bhagank rate ahe 0.1;
+he ank time = 0;                              // ank    -> integer
+he vidhan reached = khote;                    // vidhan -> boolean
 
-he maze nirank karya parinam() {
-    jovar (gun < 5) {
-        gun++;
-    }
+he maze bhagank karya cool(                   // maze   -> private
+    he bhagank temperature,
+    he bhagank roomTemp,
+    he bhagank rate
+) {
+    partav temperature - rate * (temperature - roomTemp); // partav -> return
+}
 
-    jar (pass ani takke >= 40) {
-        leeh(naav + " Pass: " + shreni);
-    } anyatha {
-        leeh("Fail");
+jovar (!reached ani time < 10) {              // jovar -> while | ani -> and
+    temperature = cool(temperature, roomTemp, rate);
+    time++;
+
+    jar (temperature <= 50.0) {               // jar -> if
+        reached = khare;
     }
 }
 
-parinam();
+jar (reached) {
+    leeh(name);
+    leeh("Tapman 50 peksha kami ahe:");
+} anyatha {                                   // anyatha -> else
+    leeh("Ajun thand hot ahe:");
+}
+
+leeh(temperature);                            // leeh -> print

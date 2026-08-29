@@ -1,15 +1,7 @@
 // Jai Maharashtra
 
 te akshar naav ahe "Anvay";
-he ank vay = 20;
-
-nirank karya namaskar(te akshar kon) {
-    leeh("Namaskar ");
-    leeh(kon);
-    leeh("\n");
-}
-
-jovar (vay > 0) {
-    namaskar(naav);
-    vay--;
-}
+he maha ank vay ahe 20;
+he purnank x ahe 4;
+leeh(x);
+leeh("anvay");

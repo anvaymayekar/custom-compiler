@@ -15,6 +15,11 @@ namespace mr {
 //  - break/continue used outside a loop
 //  - return used outside a function
 //  - call to an undeclared function, or with the wrong argument count
+//  - '+' used between a string and a non-string (only string+string
+//    concatenation is supported - see CodeGenerator::genBinExpr)
+//  - a negative literal assigned/initialized into a `purnank` variable
+//    (a syntactic check only - see docs/README.md for what this does and
+//    does not catch)
 //
 // Functions are only recognized at top level (no nested function
 // declarations) - this keeps the calling convention in CodeGenerator
@@ -31,6 +36,8 @@ class SemanticAnalyzer final {
     struct VarInfo {
         std::string name;
         bool isImmutable;
+        StorageKind kind;
+        bool isPurnank;
     };
     struct Scope {
         std::vector<VarInfo> vars;
@@ -38,6 +45,7 @@ class SemanticAnalyzer final {
     struct FuncInfo {
         std::size_t arity;
         SourceLocation loc;
+        StorageKind returnKind;
     };
 
     void collectFunctionSignatures(const NodeProgram &program);
@@ -48,11 +56,18 @@ class SemanticAnalyzer final {
     void visitTerm(const NodeTerm &term);
     void visitFuncDecl(const NodeStmtFuncDecl &func);
 
-    void declare(const std::string &name, bool isImmutable,
-                 const SourceLocation &loc);
+    void declare(const std::string &name, bool isImmutable, StorageKind kind,
+                 bool isPurnank, const SourceLocation &loc);
     void checkUse(const std::string &name, const SourceLocation &loc);
     void checkAssignable(const std::string &name, const SourceLocation &loc);
     [[nodiscard]] const VarInfo *find(const std::string &name) const;
+
+    // Best-effort static kind inference, mirroring (independently of, and
+    // more minimally than) CodeGenerator::inferKind - used only for the
+    // two targeted checks below, not a general type checker.
+    [[nodiscard]] StorageKind inferKind(const NodeTerm &term) const;
+    [[nodiscard]] StorageKind inferKind(const NodeExpr &expr) const;
+    [[nodiscard]] static bool isSyntacticallyNegative(const NodeExpr &expr);
 
     DiagnosticEngine &_diags;
     std::vector<Scope> _scopes;

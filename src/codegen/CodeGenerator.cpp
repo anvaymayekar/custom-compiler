@@ -164,7 +164,23 @@ StorageKind CodeGenerator::inferKind(const NodeExpr &expr) const {
                 result = inferKind(*node);
             } else if constexpr (std::is_same_v<T, NodeBinExpr>) {
                 switch (node->op) {
-                    case BinaryOp::Add:
+                    case BinaryOp::Add: {
+                        const StorageKind lk = inferKind(*node->lhs);
+                        const StorageKind rk = inferKind(*node->rhs);
+                        if (lk == StorageKind::Str || rk == StorageKind::Str) {
+                            // String concatenation - see genBinExpr(). Only
+                            // reached with a well-formed Str+Str pair
+                            // because SemanticAnalyzer rejects mixing a
+                            // string with a non-string operand.
+                            result = StorageKind::Str;
+                        } else if (lk == StorageKind::Float ||
+                                   rk == StorageKind::Float) {
+                            result = StorageKind::Float;
+                        } else {
+                            result = StorageKind::Int;
+                        }
+                        break;
+                    }
                     case BinaryOp::Sub:
                     case BinaryOp::Mul:
                     case BinaryOp::Div:
@@ -359,6 +375,21 @@ void CodeGenerator::genBinExpr(const NodeBinExpr &bin) {
                             bin.op == BinaryOp::Le || bin.op == BinaryOp::Ge);
     const StorageKind lk = inferKind(*bin.lhs);
     const StorageKind rk = inferKind(*bin.rhs);
+
+    if (bin.op == BinaryOp::Add &&
+        (lk == StorageKind::Str || rk == StorageKind::Str)) {
+        // String concatenation. SemanticAnalyzer rejects a string mixed
+        // with a non-string operand, so by the time codegen sees this,
+        // both sides are guaranteed Str.
+        genExpr(*bin.rhs);
+        genExpr(*bin.lhs);
+        pop("rdi", "lhs string");
+        pop("rsi", "rhs string");
+        _out << "    call str_concat\n";
+        push("rax", "concatenated string");
+        return;
+    }
+
     const bool useFloat = (isArith || isCompare) && (lk == StorageKind::Float ||
                                                      rk == StorageKind::Float);
 
@@ -922,11 +953,11 @@ void CodeGenerator::emitPrintStrRoutine() {
     _out << "    mov rax, 1\n";
     _out << "    mov rdi, 1\n";
     _out << "    syscall\n";
-    // _out << "    mov rax, 1\n";
-    // _out << "    mov rdi, 1\n";
-    // _out << "    mov rsi, nl_byte\n";
-    // _out << "    mov rdx, 1\n";
-    // _out << "    syscall\n";
+    _out << "    mov rax, 1\n";
+    _out << "    mov rdi, 1\n";
+    _out << "    mov rsi, nl_byte\n";
+    _out << "    mov rdx, 1\n";
+    _out << "    syscall\n";
     _out << "    ret\n\n";
 }
 
@@ -940,12 +971,12 @@ void CodeGenerator::emitPrintCharRoutine() {
     _out << "    mov rsi, rsp\n";
     _out << "    mov rdx, 1\n";
     _out << "    syscall\n";
-    // _out << "    add rsp, 8\n";
-    // _out << "    mov rax, 1\n";
-    // _out << "    mov rdi, 1\n";
-    // _out << "    mov rsi, nl_byte\n";
-    // _out << "    mov rdx, 1\n";
-    // _out << "    syscall\n";
+    _out << "    add rsp, 8\n";
+    _out << "    mov rax, 1\n";
+    _out << "    mov rdi, 1\n";
+    _out << "    mov rsi, nl_byte\n";
+    _out << "    mov rdx, 1\n";
+    _out << "    syscall\n";
     _out << "    ret\n\n";
 }
 
@@ -1049,8 +1080,55 @@ void CodeGenerator::emitPrintFloatRoutine() {
     _out << "    ret\n\n";
 }
 
+void CodeGenerator::emitStrConcatRoutine() {
+    _out
+        << "; str_concat: concatenates two length-prefixed strings (rdi = A,\n";
+    _out << "; rsi = B, each pointer -> 8-byte length then raw bytes) into a\n";
+    _out << "; fresh region of the bump-allocated str_heap and returns a\n";
+    _out << "; pointer to the new length-prefixed string in rax. The heap is\n";
+    _out << "; never freed - fine for short-lived programs, not for anything\n";
+    _out << "; long-running or concatenation-heavy.\n";
+    _out << "str_concat:\n";
+    _out << "    push rbp\n";
+    _out << "    mov rbp, rsp\n";
+    _out << "    push rbx\n";
+    _out << "    push r12\n";
+    _out << "    push r13\n";
+    _out << "    push r14\n";
+    _out << "    mov r12, rdi\n";
+    _out << "    mov r13, rsi\n";
+    _out << "    mov r8, [r12]\n";
+    _out << "    mov r9, [r13]\n";
+    _out << "    lea r10, [r8 + r9]\n";
+    _out << "    mov rax, [str_heap_offset]\n";
+    _out << "    lea r14, [str_heap + rax]\n";
+    _out << "    mov [r14], r10\n";
+    _out << "    lea rbx, [r10 + 8 + 7]\n";
+    _out << "    and rbx, -8\n";
+    _out << "    add rax, rbx\n";
+    _out << "    mov [str_heap_offset], rax\n";
+    _out << "    lea rsi, [r12 + 8]\n";
+    _out << "    lea rdi, [r14 + 8]\n";
+    _out << "    mov rcx, r8\n";
+    _out << "    rep movsb\n";
+    _out << "    lea rsi, [r13 + 8]\n";
+    _out << "    lea rdi, [r14 + r8 + 8]\n";
+    _out << "    mov rcx, r9\n";
+    _out << "    rep movsb\n";
+    _out << "    mov rax, r14\n";
+    _out << "    pop r14\n";
+    _out << "    pop r13\n";
+    _out << "    pop r12\n";
+    _out << "    pop rbx\n";
+    _out << "    mov rsp, rbp\n";
+    _out << "    pop rbp\n";
+    _out << "    ret\n\n";
+}
+
 std::string CodeGenerator::generate() {
     collectFunctionSignatures();
+    _out << "default abs    ; silences NASM's implicit-default-ABS deprecation "
+            "warning\n";
     _out << "; Generated by the mr compiler - do not edit by hand.\n";
     _out << "global _start\n";
     _out << "section .text\n";
@@ -1060,14 +1138,17 @@ std::string CodeGenerator::generate() {
     emitPrintStrRoutine();
     emitPrintCharRoutine();
     emitPrintFloatRoutine();
+    emitStrConcatRoutine();
 
     _out << "\nsection .rodata\n";
     _out << "    nl_byte: db 10\n";
     _out << _rodata.str();
 
-    if (!_staticData.str().empty()) {
-        _out << "\nsection .bss\n" << _staticData.str();
-    }
+    _out << "\nsection .bss\n";
+    _out << "    str_heap: resb 65536    ; bump-allocated runtime string "
+            "arena, see str_concat\n";
+    _out << "    str_heap_offset: resq 1\n";
+    _out << _staticData.str();
     return _out.str();
 }
 

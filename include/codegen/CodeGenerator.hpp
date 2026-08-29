@@ -67,6 +67,7 @@ class CodeGenerator final {
     void emitPrintStrRoutine();
     void emitPrintCharRoutine();
     void emitPrintFloatRoutine();
+    void emitStrConcatRoutine();
 
     // Infers the StorageKind an expression/term will evaluate to, using
     // declared variable/function kinds - does not emit any code.

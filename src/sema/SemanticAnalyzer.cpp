@@ -16,6 +16,7 @@ const SemanticAnalyzer::VarInfo *SemanticAnalyzer::find(
 }
 
 void SemanticAnalyzer::declare(const std::string &name, bool isImmutable,
+                               StorageKind kind, bool isPurnank,
                                const SourceLocation &loc) {
     Scope &current = _scopes.back();
     if (std::find_if(current.vars.begin(), current.vars.end(),
@@ -28,7 +29,7 @@ void SemanticAnalyzer::declare(const std::string &name, bool isImmutable,
             static_cast<int>(name.size()));
         return;
     }
-    current.vars.push_back({name, isImmutable});
+    current.vars.push_back({name, isImmutable, kind, isPurnank});
 }
 
 void SemanticAnalyzer::checkUse(const std::string &name,
@@ -57,6 +58,73 @@ void SemanticAnalyzer::checkAssignable(const std::string &name,
                          "': it was declared immutable with 'ahe'",
                      std::nullopt, static_cast<int>(name.size()));
     }
+}
+
+bool SemanticAnalyzer::isSyntacticallyNegative(const NodeExpr &expr) {
+    return std::holds_alternative<NodeUnaryExpr *>(expr.var) &&
+           std::get<NodeUnaryExpr *>(expr.var)->op == UnaryOp::Neg;
+}
+
+StorageKind SemanticAnalyzer::inferKind(const NodeTerm &term) const {
+    StorageKind result = StorageKind::Int;
+    std::visit(
+        [&](auto *node) {
+            using T = std::decay_t<decltype(*node)>;
+            if constexpr (std::is_same_v<T, NodeTermIntLiteral>) {
+                result = StorageKind::Int;
+            } else if constexpr (std::is_same_v<T, NodeTermFloatLiteral>) {
+                result = StorageKind::Float;
+            } else if constexpr (std::is_same_v<T, NodeTermBoolLiteral>) {
+                result = StorageKind::Bool;
+            } else if constexpr (std::is_same_v<T, NodeTermStringLiteral>) {
+                result = StorageKind::Str;
+            } else if constexpr (std::is_same_v<T, NodeTermCharLiteral>) {
+                result = StorageKind::Char;
+            } else if constexpr (std::is_same_v<T, NodeTermIdentifier>) {
+                const VarInfo *v = find(node->name);
+                result = v != nullptr ? v->kind : StorageKind::Int;
+            } else if constexpr (std::is_same_v<T, NodeTermParen>) {
+                result = inferKind(*node->inner);
+            } else if constexpr (std::is_same_v<T, NodeCallExpr>) {
+                auto it = _functions.find(node->callee);
+                result = (it != _functions.end()) ? it->second.returnKind
+                                                  : StorageKind::Int;
+            }
+        },
+        term.var);
+    return result;
+}
+
+StorageKind SemanticAnalyzer::inferKind(const NodeExpr &expr) const {
+    StorageKind result = StorageKind::Int;
+    std::visit(
+        [&](auto *node) {
+            using T = std::decay_t<decltype(*node)>;
+            if constexpr (std::is_same_v<T, NodeTerm>) {
+                result = inferKind(*node);
+            } else if constexpr (std::is_same_v<T, NodeBinExpr>) {
+                const StorageKind lk = inferKind(*node->lhs);
+                const StorageKind rk = inferKind(*node->rhs);
+                if (node->op == BinaryOp::Add &&
+                    (lk == StorageKind::Str || rk == StorageKind::Str)) {
+                    result = StorageKind::Str;
+                } else if (lk == StorageKind::Float ||
+                           rk == StorageKind::Float) {
+                    result = StorageKind::Float;
+                } else {
+                    result = StorageKind::Int;
+                }
+            } else if constexpr (std::is_same_v<T, NodeUnaryExpr>) {
+                result = (node->op == UnaryOp::Neg || node->op == UnaryOp::Plus)
+                             ? inferKind(*node->operand)
+                             : StorageKind::Int;
+            } else if constexpr (std::is_same_v<T, NodeIncDecExpr>) {
+                const VarInfo *v = find(node->name);
+                result = v != nullptr ? v->kind : StorageKind::Int;
+            }
+        },
+        expr.var);
+    return result;
 }
 
 void SemanticAnalyzer::visitTerm(const NodeTerm &term) {
@@ -96,6 +164,21 @@ void SemanticAnalyzer::visitExpr(const NodeExpr &expr) {
             } else if constexpr (std::is_same_v<T, NodeBinExpr>) {
                 visitExpr(*node->lhs);
                 visitExpr(*node->rhs);
+                if (node->op == BinaryOp::Add) {
+                    const StorageKind lk = inferKind(*node->lhs);
+                    const StorageKind rk = inferKind(*node->rhs);
+                    const bool eitherStr =
+                        (lk == StorageKind::Str || rk == StorageKind::Str);
+                    const bool bothStr =
+                        (lk == StorageKind::Str && rk == StorageKind::Str);
+                    if (eitherStr && !bothStr) {
+                        _diags.error(DiagCategory::Semantic, node->loc,
+                                     "cannot use '+' between a string and a "
+                                     "non-string value",
+                                     "only string + string concatenation is "
+                                     "supported right now");
+                    }
+                }
             } else if constexpr (std::is_same_v<T, NodeUnaryExpr>) {
                 visitExpr(*node->operand);
             } else if constexpr (std::is_same_v<T, NodeIncDecExpr>) {
@@ -114,7 +197,8 @@ void SemanticAnalyzer::visitScope(const NodeStmtScope &scope) {
 void SemanticAnalyzer::visitFuncDecl(const NodeStmtFuncDecl &func) {
     _scopes.push_back(Scope{});
     for (const NodeParam *param : func.params) {
-        declare(param->name, false, param->loc);
+        declare(param->name, false, resolveStorageKind(param->modifiers.type),
+                param->modifiers.type.base == BaseType::Purnank, param->loc);
     }
     _funcDepth++;
     for (const NodeStmt *stmt : func.body->stmts) { visitStmt(*stmt); }
@@ -137,8 +221,20 @@ void SemanticAnalyzer::visitStmt(const NodeStmt &stmt) {
                         "'" + node->name +
                             "' is declared 'ahe' but has no initializer");
                 }
-                if (node->expr.has_value()) { visitExpr(*node->expr.value()); }
-                declare(node->name, node->modifiers.isImmutable, node->nameLoc);
+                if (node->expr.has_value()) {
+                    visitExpr(*node->expr.value());
+                    if (node->modifiers.type.base == BaseType::Purnank &&
+                        isSyntacticallyNegative(*node->expr.value())) {
+                        _diags.error(DiagCategory::Semantic, node->nameLoc,
+                                     "cannot initialize purnank (unsigned) '" +
+                                         node->name +
+                                         "' with a negative literal");
+                    }
+                }
+                declare(node->name, node->modifiers.isImmutable,
+                        resolveStorageKind(node->modifiers.type),
+                        node->modifiers.type.base == BaseType::Purnank,
+                        node->nameLoc);
             } else if constexpr (std::is_same_v<T, NodeStmtScope>) {
                 visitScope(*node);
             } else if constexpr (std::is_same_v<T, NodeStmtIf>) {
@@ -160,6 +256,14 @@ void SemanticAnalyzer::visitStmt(const NodeStmt &stmt) {
                 }
             } else if constexpr (std::is_same_v<T, NodeStmtAssign>) {
                 checkAssignable(node->name, node->nameLoc);
+                if (const VarInfo *info = find(node->name);
+                    info != nullptr && info->isPurnank &&
+                    isSyntacticallyNegative(*node->expr)) {
+                    _diags.error(DiagCategory::Semantic, node->nameLoc,
+                                 "cannot assign a negative literal to purnank "
+                                 "(unsigned) '" +
+                                     node->name + "'");
+                }
                 visitExpr(*node->expr);
             } else if constexpr (std::is_same_v<T, NodeStmtWhile>) {
                 visitExpr(*node->expr);
@@ -226,7 +330,9 @@ void SemanticAnalyzer::collectFunctionSignatures(const NodeProgram &program) {
                          "function '" + func->name + "' is already declared");
             continue;
         }
-        _functions[func->name] = FuncInfo{func->params.size(), func->loc};
+        _functions[func->name] =
+            FuncInfo{func->params.size(), func->loc,
+                     resolveStorageKind(func->modifiers.type)};
     }
 }
 

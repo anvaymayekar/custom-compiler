@@ -1,0 +1,25 @@
+// @anvaymayekar on Github
+
+he maze ank karya sum(he ank a, he ank b) {
+    /* karya → function | maze → private */
+    partav a + b;       // partav → return
+}
+
+he nirank karya hello(te akshar str) {
+    /* nirank → void 
+       'he' is optional for karya */
+    leeh("Hello " + str);
+}
+
+he ank result = sum(10, 20);
+
+jar (result > 20 ani result < 50) {
+    // ani → and | va → or
+    leeh("Result accepted");
+}
+
+leeh(result);
+leeh (hello("Anvay"));
+ // shevti(exit_code) → exit() | 0 - 255
+ // de facto exit code (0)
+shevti(32);                       

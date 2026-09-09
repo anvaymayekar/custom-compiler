@@ -43,18 +43,25 @@ echo ""
 if [ -d "build" ]; then
     echo "→ Existing build directory found."
     echo "→ Removing previous build and CMake cache..."
+
+    # Handle build files accidentally created with sudo
+    sudo chown -R "$USER":"$(id -gn)" build
+
     rm -rf build
+
     echo "✓ Previous build removed"
 fi
 
 echo ""
 echo "<=====> Building .mr Marathi Compiler <=====>"
 echo ""
+
 echo "Configuring .mr Marathi Compiler..."
 cmake -S . -B build
 echo "✓ Build system configured"
 
 echo ""
+
 echo "Compiling and linking .mr compiler..."
 cmake --build build
 echo "✓ .mr compiler built successfully"
@@ -64,5 +71,6 @@ echo "========================================"
 echo "        .mr compiler is ready!"
 echo "========================================"
 echo ""
+
 echo "Compiler: ./build/compiler"
 echo ""

@@ -20,10 +20,23 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 # only being able to test the binary as a black box.
 add_library(mr_core STATIC
     src/diagnostics/DiagnosticEngine.cpp
-    src/lexer/Lexer.cpp
-    src/parser/Parser.cpp
     src/sema/SemanticAnalyzer.cpp
-    src/codegen/CodeGenerator.cpp
+
+    src/lexer/LexerCore.cpp
+    src/lexer/LexerScanners.cpp
+    src/lexer/LexerTokenInfo.cpp
+
+    src/parser/ParserCore.cpp
+    src/parser/ParserExpr.cpp
+    src/parser/ParserDecl.cpp
+    src/parser/ParserStmt.cpp
+
+    src/codegen/CodeGeneratorUtils.cpp
+    src/codegen/CodeGeneratorKinds.cpp
+    src/codegen/CodeGeneratorExpr.cpp
+    src/codegen/CodeGeneratorStmt.cpp
+    src/codegen/CodeGeneratorProgram.cpp
+    src/codegen/CodeGeneratorRuntime.cpp
 )
 target_include_directories(mr_core PUBLIC include)
 

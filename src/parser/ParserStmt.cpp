@@ -136,6 +136,21 @@ std::optional<NodeStmt *> Parser::parseForInit() {
 }
 
 std::optional<NodeStmt *> Parser::parseForStep() {
+    if (check(TokenType::PlusPlus) || check(TokenType::MinusMinus)) {
+        // Prefix ++i / --i as a 'pratyek' step, e.g. pratyek(...; ...; ++i).
+        Token op = advance();
+        auto nameTok = expect(TokenType::Identifier);
+        if (!nameTok.has_value()) { return std::nullopt; }
+        const IncDecOp kind = (op.type == TokenType::PlusPlus)
+                                  ? IncDecOp::PreInc
+                                  : IncDecOp::PreDec;
+        auto *node = _arena.emplace<NodeIncDecExpr>(
+            NodeIncDecExpr{kind, nameTok->lexeme.value_or(""), op.loc});
+        auto *expr = _arena.emplace<NodeExpr>(NodeExpr{node});
+        auto *stmt =
+            _arena.emplace<NodeStmtExprStmt>(NodeStmtExprStmt{expr, op.loc});
+        return _arena.emplace<NodeStmt>(NodeStmt{stmt});
+    }
     auto nameTok = expect(TokenType::Identifier);
     if (!nameTok.has_value()) { return std::nullopt; }
     if (check(TokenType::PlusPlus) || check(TokenType::MinusMinus)) {
@@ -308,6 +323,27 @@ std::optional<NodeStmt *> Parser::parseStmt() {
         }
         case TokenType::Identifier:
             return parseIdentifierLeadStmt();
+        case TokenType::PlusPlus:
+        case TokenType::MinusMinus: {
+            // Prefix ++i; / --i; used as a standalone statement. Postfix
+            // i++; / i--; is handled inside parseIdentifierLeadStmt since
+            // it starts with the identifier instead.
+            Token op = advance();
+            auto nameTok = expect(TokenType::Identifier);
+            if (!nameTok.has_value()) { return std::nullopt; }
+            if (!expect(TokenType::Semicolon).has_value()) {
+                return std::nullopt;
+            }
+            const IncDecOp kind = (op.type == TokenType::PlusPlus)
+                                      ? IncDecOp::PreInc
+                                      : IncDecOp::PreDec;
+            auto *node = _arena.emplace<NodeIncDecExpr>(
+                NodeIncDecExpr{kind, nameTok->lexeme.value_or(""), op.loc});
+            auto *expr = _arena.emplace<NodeExpr>(NodeExpr{node});
+            auto *stmt = _arena.emplace<NodeStmtExprStmt>(
+                NodeStmtExprStmt{expr, op.loc});
+            return _arena.emplace<NodeStmt>(NodeStmt{stmt});
+        }
         default:
             _diags.error(
                 DiagCategory::Syntax, peek().loc,

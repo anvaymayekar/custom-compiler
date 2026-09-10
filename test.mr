@@ -1,35 +1,17 @@
-// Jai Maharashtra
+// prefix as a bare statement
+he ank i = 0;
+++i;
+--i;
 
-te akshar name ahe "Newton's Cooling";        // ahe    -> immutable
+// prefix as a for-step
+pratyek (he ank j = 0; j < 5; ++j) { leeh(j); }
 
-he bhagank roomTemp ahe 25.0;                 // bhagank -> float
-he bhagank temperature = 90.0;                // =      -> mutable
-he bhagank rate ahe 0.1;
-he ank time = 0;                              // ank    -> integer
-he vidhan reached = khote;                    // vidhan -> boolean
-
-he maze bhagank karya cool(                   // maze   -> private
-    he bhagank temperature,
-    he bhagank roomTemp,
-    he bhagank rate
-) {
-    partav temperature - rate * (temperature - roomTemp); // partav -> return
+// sthir actually persisting across calls
+he ank karya counter() {
+    he sthir ank n = 0;
+    partav n++;
 }
-
-jovar (!reached ani time < 10) {              // jovar -> while | ani -> and
-    temperature = cool(temperature, roomTemp, rate);
-    time++;
-
-    jar (temperature <= 50.0) {               // jar -> if
-        reached = khare;
-    }
-}
-
-jar (reached) {
-    leeh(name);
-    leeh("Tapman 50 peksha kami ahe:");
-} anyatha {                                   // anyatha -> else
-    leeh("Ajun thand hot ahe:");
-}
-
-leeh(temperature);                            // leeh -> print
+leeh(counter());
+leeh(counter());
+leeh(counter());
+leeh(counter());

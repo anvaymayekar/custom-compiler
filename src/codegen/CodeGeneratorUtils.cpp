@@ -1,7 +1,7 @@
-#include "codegen/CodeGenerator.hpp"
-
 #include <algorithm>
 #include <stdexcept>
+
+#include "codegen/CodeGenerator.hpp"
 
 namespace mr {
 
@@ -71,6 +71,7 @@ void CodeGenerator::declareVar(const std::string &name, bool isStatic,
     if (isStatic) {
         const std::string label = "static_" + std::to_string(_staticCount++);
         _staticData << "    " << label << ": resq 1\n";
+        _staticData << "    " << label << "_init: resb 1\n";
         _vars.push_back(Var{name, true, 0, label, kind});
     } else {
         _vars.push_back(Var{name, false, _stackSize, {}, kind});

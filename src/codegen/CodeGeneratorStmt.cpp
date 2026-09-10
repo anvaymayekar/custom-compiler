@@ -189,14 +189,33 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                 }
                 if (storeAsStatic) {
                     if (node->expr.has_value()) {
+                        const Var *v = findVar(node->name);
+                        std::string skipLabel;
+                        if (_inFunction) {
+                            // A `sthir` local must only run its initializer
+                            // once, ever - not on every call to the enclosing
+                            // function. Guard it with the "_init" byte
+                            // declareVar() allocated alongside the static
+                            // storage itself. A top-level `sthir`/global needs
+                            // no guard: it only ever runs once, from
+                            // genEntryPoint().
+                            skipLabel = newLabel("sthir_init_done");
+                            _out << "    cmp byte [" << v->staticLabel
+                                 << "_init], 0\n";
+                            _out << "    jne " << skipLabel << "\n";
+                        }
                         const StorageKind exprKind =
                             inferKind(*node->expr.value());
                         genExpr(*node->expr.value());
                         pop("rax");
                         emitKindConversion("rax", exprKind, k);
-                        const Var *v = findVar(node->name);
                         _out << "    mov QWORD [" << v->staticLabel
                              << "], rax\n";
+                        if (_inFunction) {
+                            _out << "    mov byte [" << v->staticLabel
+                                 << "_init], 1\n";
+                            _out << skipLabel << ":\n";
+                        }
                     }
                     // else: .bss is zero-initialized already.
                 } else {
@@ -323,7 +342,8 @@ void CodeGenerator::genStmt(const NodeStmt &stmt) {
                     pop("rax");
                     emitKindConversion("rax", exprKind, _currentFuncReturnKind);
                 }
-                _out << "    mov rsp, rbp\n    pop rbp\n    ret    ; partav\n";
+                _out << "    mov rsp, rbp\n    pop rbp\n    ret    ; "
+                        "partav\n";
             } else if constexpr (std::is_same_v<T, NodeStmtExprStmt>) {
                 genExpr(*node->expr);
                 pop("rax", "discard unused expression statement result");
